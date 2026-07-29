@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
   LogOut, Coins, Gem, ScrollText, ChevronRight, Layers,
-  CalendarDays, Package, Target, Store, Shuffle, Shield, Users,
+  CalendarDays, Package, Target, Store, Shuffle, Shield, Users, Radio,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
@@ -130,6 +130,7 @@ export default async function ClubPage() {
           />
           <NavRow href="/draft" icon={Shuffle} label="Draft" />
           <NavRow href="/crest" icon={Shield} label="Escudo del club" />
+          <NavRow href="/online" icon={Radio} label="Quién está jugando" />
           <NavRow href="/clubs" icon={Users} label="Otros clubes" />
           <NavRow href="/packs" icon={Package} label="Sobres y tienda" />
           <NavRow href="/collection" icon={Layers} label="Colección" />
