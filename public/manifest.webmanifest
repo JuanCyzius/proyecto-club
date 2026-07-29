@@ -1,0 +1,17 @@
+{
+  "name": "Proyecto Club",
+  "short_name": "Club",
+  "description": "Construí tu club, decidí la táctica y ganá la liga.",
+  "start_url": "/club",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080C10",
+  "theme_color": "#080C10",
+  "categories": ["games", "sports"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

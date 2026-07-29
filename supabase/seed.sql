@@ -1,0 +1,2 @@
+-- Registro abierto: no hay lista de invitados que sembrar.
+-- (Los usuarios se crean solos desde la pantalla "Crear cuenta".)

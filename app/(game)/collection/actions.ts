@@ -1,0 +1,68 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+
+export async function quickSell(
+  cardId: string
+): Promise<{ ok: boolean; value?: number; error?: string }> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("quick_sell", {
+    p_card_id: cardId,
+  });
+  if (error) {
+    const msg = error.message ?? "";
+    if (msg.includes("bound")) {
+      return { ok: false, error: "Esa carta está vinculada al club." };
+    }
+    return { ok: false, error: "No se pudo vender la carta." };
+  }
+  revalidatePath("/collection");
+  revalidatePath("/squad");
+  revalidatePath("/club");
+  return { ok: true, value: Number(data) };
+}
+
+export async function applyItemToCard(
+  code: string,
+  cardId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("use_item", {
+    p_code: code,
+    p_card_id: cardId,
+  });
+  if (error) {
+    const raw = error.message ?? "";
+    if (raw.toLowerCase().includes("could not find")) {
+      return {
+        ok: false,
+        error: "Falta ejecutar la migración 0017_injuries_and_items.sql.",
+      };
+    }
+    return { ok: false, error: raw.replace(/^.*?:\s*/, "") || "No se pudo usar el ítem." };
+  }
+  revalidatePath("/collection");
+  revalidatePath("/squad");
+  return { ok: true };
+}
+
+/** Descarta varios jugadores de una vez por monedas. */
+export async function quickSellMany(
+  cardIds: string[]
+): Promise<{ ok: boolean; sold?: number; coins?: number; error?: string }> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("quick_sell_many", {
+    p_card_ids: cardIds,
+  });
+  if (error) {
+    const raw = error.message ?? "";
+    if (raw.toLowerCase().includes("could not find"))
+      return { ok: false, error: "Falta ejecutar la migración 0027." };
+    return { ok: false, error: raw.replace(/^.*?:\s*/, "") };
+  }
+  revalidatePath("/collection");
+  revalidatePath("/club");
+  const r = data as { sold: number; coins: number };
+  return { ok: true, sold: r.sold, coins: r.coins };
+}

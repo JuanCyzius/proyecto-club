@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --nav-h: 64px;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  html, body {
+    @apply bg-bg text-text font-body antialiased;
+    overscroll-behavior-y: none;
+  }
+  body {
+    /* Focos del estadio: resplandor tenue desde arriba */
+    background-image:
+      radial-gradient(70% 38% at 50% -8%, rgba(47, 224, 138, 0.07), transparent 68%);
+    background-attachment: fixed;
+  }
+  h1, h2, h3 {
+    @apply font-display tracking-tight;
+    text-wrap: balance;
+  }
+  /* Números siempre alineados: evita saltos al animar contadores */
+  .tabular-nums, [class*="tabular"] {
+    font-variant-numeric: tabular-nums;
+  }
+  ::selection { background: rgba(47, 224, 138, 0.28); }
+
+  :focus-visible {
+    outline: 2px solid theme('colors.turf.DEFAULT');
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+
+  /* Scrollbar discreta */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb {
+    background: theme('colors.border-strong');
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-track { background: transparent; }
+}
+
+@layer components {
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-muted;
+  }
+  .app-shell {
+    @apply mx-auto w-full max-w-app px-4;
+  }
+  /* Fila de datos reutilizable: la base de listas y tablas */
+  .row {
+    @apply flex items-center gap-2.5 px-3 py-2.5;
+  }
+  /* Superficie interactiva estándar */
+  .tap {
+    @apply transition-[transform,border-color,background-color] duration-150 ease-out
+           active:scale-[0.985];
+  }
+}
+
+@layer utilities {
+  /* Aceleración por GPU para elementos que animan a menudo */
+  .gpu { transform: translateZ(0); will-change: transform, opacity; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  /* Área segura en móviles con notch */
+  .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom, 0px)); }
+}
+
+/* Firma: líneas de campo tras las cabeceras */
+.pitch-lines::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.45;
+  background-image:
+    linear-gradient(to bottom, transparent 49.6%, rgba(47,224,138,0.11) 49.6%, rgba(47,224,138,0.11) 50.4%, transparent 50.4%),
+    radial-gradient(circle at 50% 50%, transparent 58px, rgba(47,224,138,0.11) 58px, rgba(47,224,138,0.11) 60px, transparent 60px);
+  background-repeat: no-repeat;
+  mask-image: linear-gradient(to bottom, black, transparent 88%);
+}
+
+/* Carga: barra de brillo sobre superficies neutras */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: theme('colors.surface-2');
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
