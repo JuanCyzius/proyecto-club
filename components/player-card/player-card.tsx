@@ -1,5 +1,11 @@
+"use client";
+
+// Marcado como componente de cliente porque usa `memo`, que no está
+// disponible en componentes de servidor. La carta es puramente visual,
+// así que no arrastra lógica ni datos al navegador.
 import { memo } from "react";
 import { portraitFor } from "./avatar";
+import { flagSrc } from "@/lib/flags";
 import {
   ATTR_SHORT,
   RARITY_LABEL,
@@ -59,6 +65,7 @@ function PlayerCardBase({
   const cid = `clip-${player.rarity}`;
 
   // Portero con stats propias -> cara de portero. Resto -> 6 atributos.
+  const flag = flagSrc(player.nationality);
   const gk = player.gkAttributes;
   const isKeeper =
     player.position === "GK" && !!gk && (gk.diving != null || gk.reflexes != null);
@@ -150,6 +157,33 @@ function PlayerCardBase({
           />
         )}
 
+        {/* Bandera de nacionalidad, simétrica al escudo */}
+        {flag && (
+          <>
+            <clipPath id={`flag-${cid}`}>
+              <circle cx="213" cy="167" r="17" />
+            </clipPath>
+            <image
+              href={flag}
+              x="196"
+              y="150"
+              width="34"
+              height="34"
+              preserveAspectRatio="xMidYMid slice"
+              clipPath={`url(#flag-${cid})`}
+            />
+            <circle
+              cx="213"
+              cy="167"
+              r="17"
+              fill="none"
+              stroke={t.ink}
+              strokeOpacity="0.35"
+              strokeWidth="1.5"
+            />
+          </>
+        )}
+
         {/* Panel inferior para nombre + stats (legibilidad) */}
         <rect x="20" y="232" width="220" height="128" fill="#000000" opacity="0.16" />
 
@@ -218,6 +252,7 @@ export const PlayerCard = memo(PlayerCardBase, (a, b) => {
     x.overall === y.overall &&
     x.rarity === y.rarity &&
     x.position === y.position &&
-    x.clubLogo === y.clubLogo
+    x.clubLogo === y.clubLogo &&
+    x.nationality === y.nationality
   );
 });

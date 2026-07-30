@@ -147,7 +147,7 @@ export default async function PlayerDetail({
                   <Bar
                     key={k}
                     label={ATTR_LABEL[k]}
-                    value={player.attributes[k]}
+                    value={player.attributes?.[k] ?? 0}
                   />
                 ))}
           </CardBody>

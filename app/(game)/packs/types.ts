@@ -20,6 +20,7 @@ export type PulledPlayer = {
   attributes: Attributes;
   gk_attributes?: GkAttributes | null;
   club_name?: string | null;
+  nationality?: string | null;
   name: string;
 };
 

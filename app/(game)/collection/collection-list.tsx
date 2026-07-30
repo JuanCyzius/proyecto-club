@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { Flag } from "@/components/ui/flag";
 import { Counter } from "@/components/ui/counter";
 import { Notice } from "@/components/ui/layout";
 import { useRouter } from "next/navigation";
@@ -12,7 +13,6 @@ import { Modal } from "@/components/ui/modal";
 import { Tabs } from "@/components/ui/tabs";
 import { PlayerCard } from "@/components/player-card/player-card";
 import { ClubCrest, clubLogo } from "@/components/club/club-crest";
-import { flagEmoji } from "@/lib/flags";
 import { RARITY_LABEL, type OwnedCard, type Rarity } from "@/lib/players";
 import { quickSell, applyItemToCard, quickSellMany } from "./actions";
 import { listCard, quickList } from "../market/actions";
@@ -328,7 +328,7 @@ export function CollectionList({
                         {c.name}
                       </span>
                       <span className="flex items-center gap-1 text-[10px] text-muted">
-                        <span>{flagEmoji(c.nationality)}</span>
+                        <Flag nation={c.nationality} size={12} />
                         <ClubCrest club={c.clubName} size={11} showFallback={false} />
                         <span className="truncate">{c.clubName ?? "—"}</span>
                       </span>

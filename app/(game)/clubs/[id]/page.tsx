@@ -1,11 +1,11 @@
 import Link from "next/link";
+import { Flag } from "@/components/ui/flag";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Users, Shirt } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Section, List, Row, StatTile, EmptyState } from "@/components/ui/layout";
 import { ClubCrest } from "@/components/club/club-crest";
 import { Avatar } from "@/components/ui/avatar";
-import { flagEmoji } from "@/lib/flags";
 import { coins as fmt } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -117,7 +117,7 @@ export default async function ClubDetail({
                     {r.player_name}
                   </span>
                   <span className="flex items-center gap-1 text-[10px] text-muted">
-                    <span>{flagEmoji(r.nationality)}</span>
+                    <Flag nation={r.nationality} size={12} />
                     <ClubCrest club={r.club_name} size={11} showFallback={false} />
                     <span className="truncate">{r.club_name ?? "—"}</span>
                   </span>

@@ -283,7 +283,8 @@ begin
       'attributes', v_tpl.attributes,
       'gk_attributes', v_tpl.gk_attributes,
       'name', (select name from public.player_identities where id = v_tpl.identity_id),
-      'club_name', (select club_name from public.player_identities where id = v_tpl.identity_id)
+      'club_name', (select club_name from public.player_identities where id = v_tpl.identity_id),
+      'nationality', (select nationality from public.player_identities where id = v_tpl.identity_id)
     );
   end loop;
 

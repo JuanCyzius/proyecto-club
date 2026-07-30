@@ -138,5 +138,13 @@ grant execute on function public.my_profile_stats() to authenticated;
 
 -- ------------------------------------------------------------
 -- Comprobación
+--
+-- No se puede llamar a my_profile_stats() desde el SQL Editor: la
+-- función necesita una sesión de usuario (auth.uid()) y acá se corre
+-- como `postgres`, sin sesión. Se comprueba que exista, y los datos
+-- se ven entrando al juego.
 -- ------------------------------------------------------------
-select * from public.my_profile_stats();
+select
+  (select count(*) from pg_proc where proname = 'my_profile_stats') as funcion_creada,
+  (select count(*) from public.player_templates) as catalogo,
+  (select count(*) from public.profiles) as clubes;

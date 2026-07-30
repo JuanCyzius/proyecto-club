@@ -166,6 +166,7 @@ export function PackOpening({
                         attributes: current.attributes,
                         gkAttributes: current.gk_attributes ?? null,
                         clubLogo: clubLogo(current.club_name),
+                        nationality: current.nationality,
                       }}
                     />
                   )}
@@ -261,6 +262,7 @@ export function PackOpening({
                       attributes: c.attributes,
                       gkAttributes: c.gk_attributes ?? null,
                       clubLogo: clubLogo(c.club_name),
+                      nationality: c.nationality,
                     }}
                   />
                 )}

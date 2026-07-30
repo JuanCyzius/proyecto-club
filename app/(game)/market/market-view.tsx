@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { Flag } from "@/components/ui/flag";
 import { Portrait } from "@/components/player-card/portrait";
 import { Counter } from "@/components/ui/counter";
 import { Notice } from "@/components/ui/layout";
@@ -12,7 +13,6 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Tabs } from "@/components/ui/tabs";
 import { ClubCrest } from "@/components/club/club-crest";
-import { flagEmoji } from "@/lib/flags";
 import { timeLeft } from "@/lib/format";
 import { RARITIES, RARITY_LABEL, type Rarity } from "@/lib/players";
 import { placeBid, buyNow, cancelListing } from "./actions";
@@ -229,7 +229,7 @@ export function MarketView({
                       {l.player_name}
                     </span>
                     <span className="flex items-center gap-1 text-[10px] text-muted">
-                      <span>{flagEmoji(l.nationality)}</span>
+                      <Flag nation={l.nationality} size={12} />
                       <ClubCrest club={l.club_name} size={11} showFallback={false} />
                       <span className="truncate">{l.club_name ?? "—"}</span>
                     </span>
@@ -310,7 +310,7 @@ export function MarketView({
                   <span className="text-sm text-muted">{selected.position}</span>
                 </p>
                 <p className="flex items-center gap-1 text-xs text-muted">
-                  {flagEmoji(selected.nationality)}
+                  <Flag nation={selected.nationality} size={12} />
                   <ClubCrest club={selected.club_name} size={12} showFallback={false} />
                   <span className="truncate">{selected.club_name ?? "—"}</span>
                 </p>

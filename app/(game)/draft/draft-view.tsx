@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Flag } from "@/components/ui/flag";
 import { Portrait } from "@/components/player-card/portrait";
 import { Notice } from "@/components/ui/layout";
 import { useRouter } from "next/navigation";
@@ -18,7 +19,6 @@ import { cn } from "@/lib/utils";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ClubCrest } from "@/components/club/club-crest";
-import { flagEmoji } from "@/lib/flags";
 import { RARITY_LABEL, type Rarity } from "@/lib/players";
 import {
   abandonDraft,
@@ -434,7 +434,7 @@ export function DraftView({
                 {p.overall}
               </span>
               <span className="min-w-0 flex-1 truncate text-sm">{p.name}</span>
-              <span className="text-xs">{flagEmoji(p.nationality)}</span>
+              <Flag nation={p.nationality} size={12} />
               <ClubCrest club={p.club_name} size={14} showFallback={false} />
             </div>
           ))}
@@ -473,7 +473,7 @@ function CandidateRow({
           {c.name}
         </span>
         <span className="flex items-center gap-1 text-[10px] text-muted">
-          <span>{flagEmoji(c.nationality)}</span>
+          <Flag nation={c.nationality} size={12} />
           <ClubCrest club={c.club_name} size={11} showFallback={false} />
           <span className="truncate">{c.club_name ?? "—"}</span>
         </span>

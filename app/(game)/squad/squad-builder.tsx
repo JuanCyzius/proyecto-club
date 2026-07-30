@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { Flag } from "@/components/ui/flag";
 import { Portrait } from "@/components/player-card/portrait";
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,7 +26,7 @@ import {
   chemTier,
   type ChemPlayer,
 } from "@/lib/chemistry";
-import { flagEmoji, shortLeague } from "@/lib/flags";
+import { shortLeague } from "@/lib/flags";
 import { shortName } from "@/lib/format";
 import { ClubCrest } from "@/components/club/club-crest";
 import { Modal } from "@/components/ui/modal";
@@ -355,7 +356,7 @@ export function SquadBuilder({
                       {c.name}
                     </span>
                     <span className="flex items-center gap-1 text-[10px] text-muted">
-                      <span>{flagEmoji(c.nationality)}</span>
+                      <Flag nation={c.nationality} size={12} />
                       <ClubCrest club={c.clubName} size={11} showFallback={false} />
                       <span className="truncate">{c.clubName ?? "—"}</span>
                     </span>
@@ -442,7 +443,7 @@ export function SquadBuilder({
               >
                 <b className="font-display">{c.overall}</b>
                 <span className="text-muted">{c.position}</span>
-                <span>{flagEmoji(c.nationality)}</span>
+                <Flag nation={c.nationality} size={12} />
                 <span className="text-text/80">{shortName(c.name)}</span>
               </span>
             ))}
@@ -562,7 +563,7 @@ export function SquadBuilder({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">
-                    {flagEmoji(c.nationality)} {c.name}
+                    <Flag nation={c.nationality} size={12} /> {c.name}
                   </span>
                   <span className="flex items-center gap-1 truncate text-[10px] text-muted">
                     <ClubCrest club={c.clubName} size={12} showFallback={false} />
@@ -698,12 +699,7 @@ function PitchPlayer({
         )}
 
         {/* Bandera */}
-        <span
-          className="absolute -bottom-[0.2em] -right-[0.3em] rounded-sm bg-bg/90 px-[0.15em] leading-tight ring-1 ring-border"
-          style={{ fontSize: "4cqw" }}
-        >
-          {flagEmoji(card.nationality)}
-        </span>
+        <Flag nation={card.nationality} size={12} />
       </div>
 
       {/* Nombre y escudo, juntos y legibles */}

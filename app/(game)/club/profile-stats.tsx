@@ -9,9 +9,9 @@ import {
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Flag } from "@/components/ui/flag";
 import { Section } from "@/components/ui/layout";
 import { ClubCrest } from "@/components/club/club-crest";
-import { flagEmoji } from "@/lib/flags";
 import { coins as fmt } from "@/lib/format";
 import { RARITY_LABEL, type Rarity } from "@/lib/players";
 
@@ -199,7 +199,7 @@ export function CollectionBlock({ s }: { s: ProfileStats }) {
                 {s.fav_card_name}
               </span>
               <span className="flex items-center gap-1 text-[11px] text-muted">
-                <span>{flagEmoji(s.fav_card_nationality)}</span>
+                <Flag nation={s.fav_card_nationality} size={12} />
                 <ClubCrest
                   club={s.fav_card_club}
                   size={11}
