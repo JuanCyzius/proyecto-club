@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { settleExpired } from "./actions";
+import { settleExpired, getShop } from "./actions";
 import { MarketView, type Listing } from "./market-view";
+import { ShopSection } from "./shop-section";
 import { PageHeader } from "@/components/ui/layout";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ export default async function MarketPage() {
   // Resolver subastas vencidas antes de mostrar el mercado
   await settleExpired();
 
-  const [{ data: listings }, { data: mine }, { data: profile }] =
+  const [{ data: listings }, { data: mine }, { data: profile }, shop] =
     await Promise.all([
       supabase
         .from("market_listings")
@@ -32,6 +33,7 @@ export default async function MarketPage() {
         .order("created_at", { ascending: false })
         .limit(20),
       supabase.from("profiles").select("coins").eq("id", user.id).maybeSingle(),
+      getShop(),
     ]);
 
   return (
@@ -41,6 +43,7 @@ export default async function MarketPage() {
         title="Mercado"
         subtitle="Comprá y vendé jugadores. El vendedor paga 5% de impuesto."
       />
+      <ShopSection slots={shop} coins={profile?.coins ?? 0} />
       <MarketView
         listings={(listings ?? []) as Listing[]}
         mine={(mine ?? []) as Listing[]}

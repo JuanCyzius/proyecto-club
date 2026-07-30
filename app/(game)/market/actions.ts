@@ -104,3 +104,45 @@ export async function quickList(
   if (!res.ok) return { ok: false, error: res.error };
   return { ok: true, price: s.hint.buy_now };
 }
+
+// ---- Tienda de jugadores (rotación cada 2hs) ----
+export type ShopSlot = {
+  slot_id: number;
+  slot: number;
+  name: string;
+  position: string;
+  overall: number;
+  rarity: string;
+  club_name: string | null;
+  nationality: string | null;
+  price: number;
+  expires_in_min: number;
+  already_bought: boolean;
+};
+
+export async function getShop(): Promise<ShopSlot[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("market_shop");
+  if (error) return [];
+  return (data ?? []) as ShopSlot[];
+}
+
+export async function buyShopPlayer(
+  slotId: number
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("market_shop_buy", {
+    p_slot_id: slotId,
+  });
+  if (error) {
+    const raw = error.message ?? "";
+    if (raw.toLowerCase().includes("insufficient"))
+      return { ok: false, error: "No te alcanzan las monedas." };
+    if (raw.toLowerCase().includes("could not find"))
+      return { ok: false, error: "Falta ejecutar la migración 0037_tienda_jugadores.sql." };
+    return { ok: false, error: raw.replace(/^.*?:\s*/, "") || "No se pudo comprar." };
+  }
+  revalidatePath("/market");
+  revalidatePath("/collection");
+  return { ok: true };
+}

@@ -23,3 +23,19 @@ export async function periodRanking(
   if (error) return [];
   return (data ?? []) as RankRow[];
 }
+
+export type DailyWinner = {
+  rank: number;
+  club_name: string;
+  crest_club: string | null;
+  matches: number;
+  coins: number;
+};
+
+/** Liquida los premios diarios pendientes y trae los ganadores de ayer. */
+export async function dailyTop(): Promise<DailyWinner[]> {
+  const supabase = createClient();
+  await supabase.rpc("settle_daily_top");
+  const { data } = await supabase.rpc("daily_top_winners");
+  return (data ?? []) as DailyWinner[];
+}

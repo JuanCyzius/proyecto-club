@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LeaguesView, type StandingRow, type PendingMatch, type Rival } from "./leagues-view";
-import { periodRanking } from "./ranking-actions";
+import { periodRanking, dailyTop } from "./ranking-actions";
 import { PageHeader } from "@/components/ui/layout";
 
 export const dynamic = "force-dynamic";
@@ -59,7 +59,7 @@ export default async function LeaguesPage() {
       );
   }
 
-  const [{ data: pending }, { data: me }, { data: rivals }, ranking] = await Promise.all([
+  const [{ data: pending }, { data: me }, { data: rivals }, ranking, dailyWinners] = await Promise.all([
     supabase.rpc("my_pending_matches"),
     supabase
       .from("profiles")
@@ -73,6 +73,7 @@ export default async function LeaguesPage() {
       .order("rating", { ascending: false })
       .limit(30),
     periodRanking("matches", "week"),
+    dailyTop(),
   ]);
 
   return (
@@ -95,6 +96,7 @@ export default async function LeaguesPage() {
         rankedPlayed={me?.ranked_played ?? 0}
         rankedWon={me?.ranked_won ?? 0}
         ranking={ranking}
+        dailyWinners={dailyWinners}
       />
     </div>
   );
