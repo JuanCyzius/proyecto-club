@@ -140,7 +140,7 @@ export default async function ClubPage() {
       {/* Accesos */}
       <Section label="Tu club">
         <List>
-          <NavRow href="/leagues" icon={Trophy} label="Ligas y PvP" />
+          <NavRow href="/leagues" icon={Trophy} label="Actividad y premios" />
           <NavRow
             href="/objectives"
             icon={Target}

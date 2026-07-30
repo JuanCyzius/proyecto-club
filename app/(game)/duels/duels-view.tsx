@@ -36,7 +36,7 @@ import {
 
 const ROUNDS = 7; // 5 + 2 de muerte súbita
 
-type Phase = "list" | "shots" | "dives" | "wager" | "playing" | "result";
+type Phase = "list" | "picks" | "wager" | "playing" | "result";
 
 export function DuelsView({
   open,
@@ -87,13 +87,13 @@ export function DuelsView({
 
   function beginCreate() {
     reset();
-    setPhase("shots");
+    setPhase("picks");
   }
 
   function beginAccept(d: OpenDuel) {
     reset();
     setTarget(d);
-    setPhase("shots");
+    setPhase("picks");
     if (d.stake_rarity) {
       setWagerKind("card");
       myWagerableCards(d.stake_rarity).then(setCards);
@@ -104,11 +104,10 @@ export function DuelsView({
   }
 
   function pickZone(z: number) {
-    if (phase === "shots") {
-      const next = [...shots, z];
-      setShots(next);
-      if (next.length === ROUNDS) setPhase("dives");
-    } else if (phase === "dives") {
+    // Penal por penal: primero pateás vos, después atajás vos.
+    if (shots.length === dives.length && shots.length < ROUNDS) {
+      setShots([...shots, z]);
+    } else {
       const next = [...dives, z];
       setDives(next);
       if (next.length === ROUNDS) {
@@ -151,14 +150,15 @@ export function DuelsView({
   useEffect(() => {
     if (phase !== "result" || !result) return;
     if (step >= result.rounds.length) return;
-    const t = setTimeout(() => setStep((s) => s + 1), 2600);
+    const t = setTimeout(() => setStep((s) => s + 1), 4200);
     return () => clearTimeout(t);
   }, [phase, result, step]);
 
   // ── Elegir disparos o atajadas ──
-  if (phase === "shots" || phase === "dives") {
-    const isShots = phase === "shots";
-    const done = isShots ? shots.length : dives.length;
+  if (phase === "picks") {
+    const isShots = shots.length === dives.length;
+    const round = dives.length + 1;
+    const done = shots.length + dives.length;
     return (
       <div className="space-y-4">
         <div className="rounded-2xl border border-border bg-surface p-3">
@@ -169,18 +169,27 @@ export function DuelsView({
               <Hand size={16} className="text-trophy" />
             )}
             <span className="text-sm font-bold">
-              {isShots ? "Tus 7 disparos" : "Tus 7 atajadas"}
+              PENAL {round} DE {ROUNDS} · {isShots ? "Pateás vos" : "Atajás vos"}
             </span>
             <span className="ml-auto font-display text-lg font-extrabold tabular-nums">
-              {done}/{ROUNDS}
+              {done}/{ROUNDS * 2}
             </span>
           </div>
           <p className="text-xs leading-snug text-muted">
             {isShots
-              ? "Elegí dónde vas a patear en cada ronda. El arquero rival no sabe cuál elegiste."
-              : "Elegí dónde se tira tu arquero. Cubre esa zona y las de al lado, según tu nivel."}
+              ? "Tocá la zona del arco donde patearías este penal. El rival no ve tu elección."
+              : "Ahora el penal del rival: tocá dónde se tira tu arquero. Cubre esa zona y las vecinas (más cuanto mayor sea tu nivel, se ven sombreadas)."}
           </p>
         </div>
+
+        {done === 0 && (
+          <p className="rounded-xl border border-border bg-surface-2 px-3 py-2 text-[11px] leading-snug text-muted">
+            ¿Cómo funciona? Se juegan 7 penales alternados: en cada uno
+            elegís dónde pateás y dónde te tirás. Cuando el rival juegue los
+            suyos, se resuelve penal a penal en vivo: es gol si el arquero no
+            cubrió esa zona. Rondas 6 y 7 solo si hay muerte súbita.
+          </p>
+        )}
 
         {error && <Notice tone="error">{error}</Notice>}
 
@@ -189,25 +198,18 @@ export function DuelsView({
           selected={null}
           onSelect={pickZone}
           covered={!isShots ? coveredZones(0, myZones) : undefined}
-          label={`Ronda ${done + 1}`}
+          label={isShots ? `Penal ${round} · tu disparo` : `Penal ${round} · tu atajada`}
         />
 
         {/* Progreso de las elecciones */}
         <div className="flex justify-center gap-1.5">
           {Array.from({ length: ROUNDS }).map((_, i) => (
-            <span
-              key={i}
-              className={cn(
-                "h-2 w-6 rounded-full",
-                i < done ? (isShots ? "bg-turf" : "bg-trophy") : "bg-surface-2"
-              )}
-            />
+            <span key={i} className="flex flex-col gap-0.5">
+              <span className={cn("h-2 w-6 rounded-full", i < shots.length ? "bg-turf" : "bg-surface-2")} />
+              <span className={cn("h-2 w-6 rounded-full", i < dives.length ? "bg-trophy" : "bg-surface-2")} />
+            </span>
           ))}
         </div>
-
-        <p className="text-center text-[11px] text-muted">
-          Las rondas 6 y 7 se usan solo si hay muerte súbita.
-        </p>
 
         <Button fullWidth variant="secondary" onClick={reset}>
           Cancelar
@@ -359,22 +361,45 @@ export function DuelsView({
 
         {!finished && r && (
           <>
+            {/* Tu penal: pateás vos contra el arquero rival */}
             <GoalGrid
               mode="reveal"
               shot={r.opponent_shot}
               keeperAt={r.challenger_dive}
               covered={coveredZones(r.challenger_dive, r.challenger_zones)}
               isGoal={r.opponent_goal}
-              label="Tu penal"
+              label={`Penal ${r.round} · PATEÁS VOS`}
             />
             <p
               className={cn(
-                "text-center text-sm font-bold",
+                "-mt-1 text-center text-sm font-bold",
                 myGoal ? "text-turf" : "text-danger"
               )}
             >
-              {myGoal ? "¡Gol!" : "Atajó el arquero"}
+              {myGoal ? "¡GOL TUYO!" : "Te lo atajó su arquero"}
             </p>
+
+            {/* El penal del rival: atajás vos con la zona que elegiste */}
+            <GoalGrid
+              mode="reveal"
+              shot={r.challenger_shot}
+              keeperAt={r.opponent_dive}
+              covered={coveredZones(r.opponent_dive, r.opponent_zones)}
+              isGoal={r.challenger_goal}
+              label={`Penal ${r.round} · ATAJÁS VOS`}
+            />
+            <p
+              className={cn(
+                "-mt-1 text-center text-sm font-bold",
+                r.challenger_goal ? "text-danger" : "text-turf"
+              )}
+            >
+              {r.challenger_goal ? "Gol del rival…" : "¡ATAJASTE!"}
+            </p>
+
+            <Button fullWidth variant="secondary" onClick={() => setStep((s) => s + 1)}>
+              Siguiente penal
+            </Button>
           </>
         )}
 

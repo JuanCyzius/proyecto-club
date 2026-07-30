@@ -81,7 +81,9 @@ export function Modal({
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6">
+        <div
+          className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-4 pb-10 [-webkit-overflow-scrolling:touch]"
+        >
           {children}
         </div>
 

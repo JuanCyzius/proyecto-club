@@ -45,8 +45,8 @@ export default async function SbcPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        eyebrow="Desafíos"
-        title="Desafíos de plantilla"
+        eyebrow="SBC"
+        title="SBC"
         subtitle="Entregá jugadores que cumplan las condiciones y cobrá el premio. Las cartas entregadas se pierden."
       />
       <SbcView challenges={challenges} cards={cards} />

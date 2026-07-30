@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Notice } from "@/components/ui/layout";
-import { Swords, Zap, Dices, Coins, Shuffle, ChevronRight, Target } from "lucide-react";
+import { Swords, Zap, Coins, Shuffle, ChevronRight, Target, Gamepad2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Card, CardBody } from "@/components/ui/card";
@@ -73,15 +73,6 @@ export function TierList({ tiers }: { tiers: Tier[] }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-start gap-2 rounded-xl border border-turf/30 bg-turf-soft/25 px-3 py-2.5">
-        <Dices size={16} className="mt-0.5 shrink-0 text-turf" />
-        <p className="text-xs text-muted">
-          No sabés contra quién jugás hasta que arranca el partido. Te toca un{" "}
-          <b className="text-text">club real al azar</b> de ese nivel, con su
-          plantilla y su táctica.
-        </p>
-      </div>
-
       {/* Modo Draft */}
       <Link
         href="/draft"
@@ -111,6 +102,23 @@ export function TierList({ tiers }: { tiers: Tier[] }) {
           <span className="block font-bold text-turf">Tanda de penales</span>
           <span className="block text-xs text-muted">
             Desafiá a otro club. Podés apostar monedas o un jugador.
+          </span>
+        </span>
+        <ChevronRight size={18} className="shrink-0 text-muted" />
+      </Link>
+
+      {/* PvP Arcade */}
+      <Link
+        href="/pvp-lab"
+        className="flex items-center gap-3 rounded-2xl border border-danger/40 bg-danger/10 p-3 transition hover:border-danger"
+      >
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-danger/20 text-danger">
+          <Gamepad2 size={22} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold text-danger">PvP Arcade (beta)</span>
+          <span className="block text-xs text-muted">
+            8 jugadas a pura habilidad: joystick, sprint y un botón. Suma rating.
           </span>
         </span>
         <ChevronRight size={18} className="shrink-0 text-muted" />

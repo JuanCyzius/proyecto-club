@@ -424,7 +424,7 @@ export function CollectionList({
       >
         {selected && (
           <div className="space-y-4">
-            <div className="mx-auto w-40">
+            <div className="mx-auto w-32">
               <PlayerCard
                 player={{
                   ...selected,
@@ -437,34 +437,6 @@ export function CollectionList({
               {selected.position} · {RARITY_LABEL[selected.rarity]}
               {selected.clubName ? ` · ${selected.clubName}` : ""}
             </p>
-
-            {/* Estado */}
-            <div className="grid grid-cols-2 gap-2 text-center">
-              <div className="rounded-xl border border-border bg-surface-2 p-2">
-                <p className="text-[10px] uppercase text-muted">Energía</p>
-                <p
-                  className={cn(
-                    "font-display text-lg font-extrabold",
-                    (selected.stamina ?? 100) >= 85 ? "text-turf" : "text-trophy"
-                  )}
-                >
-                  {Math.round(selected.stamina ?? 100)}%
-                </p>
-              </div>
-              <div className="rounded-xl border border-border bg-surface-2 p-2">
-                <p className="text-[10px] uppercase text-muted">Estado</p>
-                <p
-                  className={cn(
-                    "font-display text-lg font-extrabold",
-                    (selected.injuryMatches ?? 0) > 0 ? "text-danger" : "text-turf"
-                  )}
-                >
-                  {(selected.injuryMatches ?? 0) > 0
-                    ? `${selected.injuryMatches} part.`
-                    : "Apto"}
-                </p>
-              </div>
-            </div>
 
             {/* Los ítems de curación/energía ahora se usan desde la
                 pestaña Ítems y afectan a todo el plantel de una vez. */}
@@ -530,6 +502,35 @@ export function CollectionList({
                 Carta vinculada: no se puede vender.
               </p>
             )}
+
+            {/* Estado */}
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div className="rounded-xl border border-border bg-surface-2 p-2">
+                <p className="text-[10px] uppercase text-muted">Energía</p>
+                <p
+                  className={cn(
+                    "font-display text-lg font-extrabold",
+                    (selected.stamina ?? 100) >= 85 ? "text-turf" : "text-trophy"
+                  )}
+                >
+                  {Math.round(selected.stamina ?? 100)}%
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-surface-2 p-2">
+                <p className="text-[10px] uppercase text-muted">Estado</p>
+                <p
+                  className={cn(
+                    "font-display text-lg font-extrabold",
+                    (selected.injuryMatches ?? 0) > 0 ? "text-danger" : "text-turf"
+                  )}
+                >
+                  {(selected.injuryMatches ?? 0) > 0
+                    ? `${selected.injuryMatches} part.`
+                    : "Apto"}
+                </p>
+              </div>
+            </div>
+
           </div>
         )}
       </Modal>

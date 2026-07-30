@@ -12,7 +12,7 @@ const items = [
   { href: "/squad", label: "Plantilla", icon: Users },
   { href: "/play", label: "Jugar", icon: Play, invites: true },
   { href: "/market", label: "Mercado", icon: Store },
-  { href: "/sbc", label: "Desafíos", icon: ClipboardCheck },
+  { href: "/sbc", label: "SBC", icon: ClipboardCheck },
   { href: "/online", label: "En línea", icon: UserRound, presence: true },
 ];
 

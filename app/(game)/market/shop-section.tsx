@@ -113,8 +113,8 @@ export function ShopSection({
         );
       })}
       <p className="px-1 text-[10px] text-muted">
-        Iguales para todos los clubes. Podés comprar cada jugador una vez
-        por rotación.
+        Cada club ve jugadores distintos, al azar. Podés comprar cada uno
+        una vez por rotación.
       </p>
     </div>
   );

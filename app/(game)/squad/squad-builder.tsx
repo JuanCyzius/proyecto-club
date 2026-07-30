@@ -149,6 +149,13 @@ export function SquadBuilder({
     setSaved(false);
   }
 
+  function openPicker(p: { slot: string; pos?: Position }) {
+    setFLeague("");
+    setFNation("");
+    setFMinOv(0);
+    setPicker(p as any);
+  }
+
   function assign(slot: string, cardId: string | null) {
     setSlots((prev) => {
       const next = { ...prev };
@@ -231,6 +238,19 @@ export function SquadBuilder({
     return () => clearTimeout(autosave.current);
   }, [dirty, onSave]);
 
+  // Filtros del picker (liga / país / media mínima)
+  const [fLeague, setFLeague] = useState("");
+  const [fNation, setFNation] = useState("");
+  const [fMinOv, setFMinOv] = useState(0);
+  const leagues = useMemo(
+    () => Array.from(new Set(cards.map((c) => c.leagueName).filter(Boolean) as string[])).sort(),
+    [cards]
+  );
+  const nations = useMemo(
+    () => Array.from(new Set(cards.map((c) => c.nationality).filter(Boolean) as string[])).sort(),
+    [cards]
+  );
+
   // Candidatos para el picker actual.
   const pickerCandidates = useMemo(() => {
     if (!picker) return [];
@@ -243,7 +263,13 @@ export function SquadBuilder({
         if (id) taken.delete(id);
       }
     }
-    const list = cards.filter((c) => !taken.has(c.id));
+    const list = cards.filter(
+      (c) =>
+        !taken.has(c.id) &&
+        (!fLeague || c.leagueName === fLeague) &&
+        (!fNation || c.nationality === fNation) &&
+        c.overall >= fMinOv
+    );
     if (picker.pos) {
       const pos = picker.pos;
       return [...list].sort((a, b) => {
@@ -254,7 +280,7 @@ export function SquadBuilder({
     }
     return [...list].sort((a, b) => b.overall - a.overall);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picker, cards, slots]);
+  }, [picker, cards, slots, fLeague, fNation, fMinOv]);
 
   return (
     <div className="space-y-4 pb-24">
@@ -330,7 +356,7 @@ export function SquadBuilder({
           return (
             <button
               key={s.code}
-              onClick={() => setPicker({ slot: s.code, pos: s.pos })}
+              onClick={() => openPicker({ slot: s.code, pos: s.pos })}
               style={{ left: `${s.x}%`, top: `${s.y}%` }}
               className="absolute -translate-x-1/2 -translate-y-1/2"
             >
@@ -364,7 +390,7 @@ export function SquadBuilder({
               return (
                 <button
                   key={slot.code}
-                  onClick={() => setPicker({ slot: slot.code, pos: slot.pos })}
+                  onClick={() => openPicker({ slot: slot.code, pos: slot.pos })}
                   className={cn(
                     "flex w-full items-center gap-2 border-b border-border/60 px-2.5 py-2 text-left last:border-0 hover:bg-surface-2",
                     inj && "bg-danger/5"
@@ -438,7 +464,7 @@ export function SquadBuilder({
             return (
               <button
                 key={b}
-                onClick={() => setPicker({ slot: b })}
+                onClick={() => openPicker({ slot: b })}
                 className={cn(
                   "relative flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-lg border text-center",
                   c
@@ -603,9 +629,50 @@ export function SquadBuilder({
               <X size={16} /> Quitar de esta posición
             </button>
           )}
+          {/* Filtros: liga / país / media mínima */}
+          <div className="grid grid-cols-3 gap-1.5">
+            <select
+              value={fLeague}
+              onChange={(e) => setFLeague(e.target.value)}
+              className="w-full truncate rounded-lg border border-border bg-surface-2 px-2 py-1.5 text-xs"
+            >
+              <option value="">Liga: todas</option>
+              {leagues.map((l) => (
+                <option key={l} value={l}>
+                  {shortLeague(l)}
+                </option>
+              ))}
+            </select>
+            <select
+              value={fNation}
+              onChange={(e) => setFNation(e.target.value)}
+              className="w-full truncate rounded-lg border border-border bg-surface-2 px-2 py-1.5 text-xs"
+            >
+              <option value="">País: todos</option>
+              {nations.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            <select
+              value={fMinOv}
+              onChange={(e) => setFMinOv(Number(e.target.value))}
+              className="w-full rounded-lg border border-border bg-surface-2 px-2 py-1.5 text-xs"
+            >
+              {[0, 65, 70, 75, 80, 85].map((v) => (
+                <option key={v} value={v}>
+                  {v === 0 ? "Media: todas" : `Media ${v}+`}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {pickerCandidates.length === 0 && (
             <p className="py-6 text-center text-sm text-muted">
-              No hay cartas disponibles.
+              {fLeague || fNation || fMinOv > 0
+                ? "Ninguna carta cumple esos filtros."
+                : "No hay cartas disponibles."}
             </p>
           )}
           {pickerCandidates.map((c) => {
@@ -768,16 +835,16 @@ function PitchPlayer({
   return (
     <div
       className="flex flex-col items-center"
-      style={{ width: "17.5cqw", maxWidth: "98px" }}
+      style={{ width: "16.6cqw", maxWidth: "93px" }}
     >
       {/* Rostro con aura del color de la rareza */}
       <div
         className="relative rounded-full bg-bg/90 backdrop-blur"
         style={{
-          width: "11.8cqw",
-          height: "11.8cqw",
-          maxWidth: "64px",
-          maxHeight: "64px",
+          width: "11.2cqw",
+          height: "11.2cqw",
+          maxWidth: "61px",
+          maxHeight: "61px",
           boxShadow: injured
             ? "0 0 0 2px #ef4444, 0 0 10px 2px rgba(239,68,68,0.6)"
             : `0 0 0 2px ${aura.ring}, 0 0 10px 2px ${aura.glow}`,
@@ -835,6 +902,16 @@ function PitchPlayer({
           {shortName(card.name)}
         </span>
       </span>
+
+      {/* Liga en la que juega */}
+      {card.leagueName && (
+        <span
+          className="mt-[0.15em] w-full truncate rounded bg-bg/70 px-[0.3em] text-center leading-tight text-muted backdrop-blur"
+          style={{ fontSize: "2.9cqw" }}
+        >
+          {shortLeague(card.leagueName)}
+        </span>
+      )}
 
       {/* Posición, química y energía en una sola fila */}
       <span
