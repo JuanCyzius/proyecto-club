@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { Portrait } from "@/components/player-card/portrait";
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -26,11 +27,21 @@ import {
 } from "@/lib/chemistry";
 import { flagEmoji, shortLeague } from "@/lib/flags";
 import { shortName } from "@/lib/format";
-import { faceElements } from "@/components/player-card/avatar";
 import { ClubCrest } from "@/components/club/club-crest";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { saveSquad } from "./actions";
+
+// Resplandor según la rareza del jugador: se reconoce el nivel de la
+// carta de un vistazo, sin leer nada.
+const RARITY_AURA: Record<string, { ring: string; glow: string }> = {
+  common:    { ring: "#8A5A2B", glow: "rgba(138,90,43,0.55)" },
+  uncommon:  { ring: "#AAB7C2", glow: "rgba(170,183,194,0.5)" },
+  rare:      { ring: "#ECC65E", glow: "rgba(236,198,94,0.55)" },
+  epic:      { ring: "#6F86FF", glow: "rgba(111,134,255,0.6)" },
+  legendary: { ring: "#FF5B6E", glow: "rgba(255,91,110,0.6)" },
+  icon:      { ring: "#F6E7B3", glow: "rgba(246,231,179,0.7)" },
+};
 
 const FIT_RING: Record<Fit, string> = {
   exact: "ring-turf text-turf",
@@ -335,15 +346,7 @@ export function SquadBuilder({
                   >
                     {slot.pos}
                   </span>
-                  <svg
-                    width={26}
-                    height={26}
-                    viewBox="0 0 100 100"
-                    className="shrink-0 rounded-full bg-bg"
-                    dangerouslySetInnerHTML={{
-                      __html: faceElements(c.name, 50, 48, 33),
-                    }}
-                  />
+                  <Portrait name={c.name} size={26} className="shrink-0  bg-bg" />
                   <span className="font-display w-7 shrink-0 text-center text-base font-extrabold">
                     {c.overall}
                   </span>
@@ -545,15 +548,7 @@ export function SquadBuilder({
                 onClick={() => assign(picker!.slot, c.id)}
                 className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-surface-2 px-2.5 py-2 text-left transition hover:border-turf/50"
               >
-                <svg
-                  width={32}
-                  height={32}
-                  viewBox="0 0 100 100"
-                  className="shrink-0 rounded-full bg-bg"
-                  dangerouslySetInnerHTML={{
-                    __html: faceElements(c.name, 50, 48, 33),
-                  }}
-                />
+                <Portrait name={c.name} size={32} className="shrink-0  bg-bg" />
                 <span className="font-display w-7 shrink-0 text-center text-lg font-extrabold">
                   {c.overall}
                 </span>
@@ -662,6 +657,7 @@ function PitchPlayer({
   const tier = chemTier(chem);
   const chemDots = Math.round(chem / 2); // 0-5
   const stamina = typeof card.stamina === "number" ? card.stamina : 100;
+  const aura = RARITY_AURA[card.rarity] ?? RARITY_AURA.common;
 
   // Todo se dimensiona en % del ancho del campo (cqw): las fichas crecen
   // en pantallas grandes sin solaparse en las chicas. El hueco más
@@ -669,23 +665,20 @@ function PitchPlayer({
   return (
     <div
       className="flex flex-col items-center"
-      style={{ width: "19cqw", maxWidth: "108px" }}
+      style={{ width: "17.5cqw", maxWidth: "98px" }}
     >
-      {/* Rostro con anillo según ajuste de posición */}
+      {/* Rostro con aura del color de la rareza */}
       <div
-        className={cn(
-          "relative rounded-full bg-bg/90 ring-2 backdrop-blur",
-          FIT_RING[fit].split(" ")[0]
-        )}
-        style={{ width: "13cqw", height: "13cqw", maxWidth: "72px", maxHeight: "72px" }}
+        className="relative rounded-full bg-bg/90 backdrop-blur"
+        style={{
+          width: "11.8cqw",
+          height: "11.8cqw",
+          maxWidth: "64px",
+          maxHeight: "64px",
+          boxShadow: `0 0 0 2px ${aura.ring}, 0 0 10px 2px ${aura.glow}`,
+        }}
       >
-        <svg
-          viewBox="0 0 100 100"
-          className="h-full w-full rounded-full"
-          dangerouslySetInnerHTML={{
-            __html: faceElements(card.name, 50, 48, 33),
-          }}
-        />
+        <Portrait name={card.name} className="h-full w-full rounded-full" />
         {/* Media */}
         <span
           className="absolute -left-[0.4em] -top-[0.3em] rounded-md bg-bg px-[0.35em] font-display font-extrabold leading-tight text-text ring-1 ring-border"
@@ -693,6 +686,17 @@ function PitchPlayer({
         >
           {card.overall}
         </span>
+        {/* Aviso de jugador fuera de su puesto */}
+        {fit === "none" && (
+          <span
+            className="absolute -right-[0.25em] -top-[0.25em] flex items-center justify-center rounded-full bg-danger text-bg ring-2 ring-bg"
+            style={{ width: "3.6cqw", height: "3.6cqw", fontSize: "2.4cqw" }}
+            title="Fuera de posición"
+          >
+            !
+          </span>
+        )}
+
         {/* Bandera */}
         <span
           className="absolute -bottom-[0.2em] -right-[0.3em] rounded-sm bg-bg/90 px-[0.15em] leading-tight ring-1 ring-border"

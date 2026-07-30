@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Notice } from "@/components/ui/layout";
-import { Swords, Zap, Dices, Coins, Shuffle, ChevronRight } from "lucide-react";
+import { Swords, Zap, Dices, Coins, Shuffle, ChevronRight, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Card, CardBody } from "@/components/ui/card";
@@ -86,6 +86,23 @@ export function TierList({ tiers }: { tiers: Tier[] }) {
           <span className="block font-bold text-trophy">Draft</span>
           <span className="block text-xs text-muted">
             Armá un equipo de cracks y ganá 5 partidos por premios grandes.
+          </span>
+        </span>
+        <ChevronRight size={18} className="shrink-0 text-muted" />
+      </Link>
+
+      {/* Tanda de penales PvP */}
+      <Link
+        href="/duels"
+        className="flex items-center gap-3 rounded-2xl border border-turf/40 bg-turf-soft/15 p-3 transition hover:border-turf"
+      >
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-turf/20 text-turf">
+          <Target size={22} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold text-turf">Tanda de penales</span>
+          <span className="block text-xs text-muted">
+            Desafiá a otro club. Podés apostar monedas o un jugador.
           </span>
         </span>
         <ChevronRight size={18} className="shrink-0 text-muted" />

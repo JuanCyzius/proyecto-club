@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { faceElements } from "./avatar";
+import { portraitFor } from "./avatar";
 import {
   ATTR_SHORT,
   RARITY_LABEL,
@@ -96,6 +96,9 @@ function PlayerCardBase({
           <stop offset="0" stopColor={t.from} />
           <stop offset="1" stopColor={t.to} />
         </linearGradient>
+        <clipPath id={`face-${cid}`}>
+          <circle cx="165" cy="125" r="55" />
+        </clipPath>
         <clipPath id={cid}>
           <path d="M20 8 h220 a12 12 0 0 1 12 12 v300 a40 40 0 0 1 -40 40 h-176 a40 40 0 0 1 -40 -40 v-300 a12 12 0 0 1 12 -12 z" />
         </clipPath>
@@ -110,12 +113,16 @@ function PlayerCardBase({
       />
 
       <g clipPath={`url(#${cid})`}>
-        {/* Rostro generado a partir del nombre (determinista) */}
-        <g
-          opacity="0.96"
-          dangerouslySetInnerHTML={{
-            __html: faceElements(player.name, 162, 128, 52),
-          }}
+        {/* Retrato del jugador, derivado del nombre */}
+        <image
+          href={portraitFor(player.name)}
+          x="110"
+          y="70"
+          width="110"
+          height="110"
+          preserveAspectRatio="xMidYMin slice"
+          clipPath={`url(#face-${cid})`}
+          opacity="0.98"
         />
 
         {/* Bloque superior izquierdo: media + posición */}

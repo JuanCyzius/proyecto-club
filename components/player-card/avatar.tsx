@@ -15,6 +15,17 @@ function hash(str: string): number {
   return h >>> 0;
 }
 
+// ── RETRATOS ─────────────────────────────────────────────────────────
+// 60 ilustraciones en /public/portraits. Se asigna una a cada jugador
+// según su nombre: el mismo jugador tiene siempre el mismo rostro, sin
+// necesidad de guardar nada en la base.
+export const PORTRAIT_COUNT = 60;
+
+export function portraitFor(name: string): string {
+  const i = hash(name) % PORTRAIT_COUNT;
+  return `/portraits/p${String(i).padStart(2, "0")}.webp`;
+}
+
 /** Generador determinista a partir de la semilla. */
 function picker(seed: number) {
   let a = seed >>> 0;

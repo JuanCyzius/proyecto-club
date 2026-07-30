@@ -13,9 +13,8 @@ export default async function OnlinePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Entrar acá también cuenta como actividad
-  await touchPresence();
-  const rows = await getPresence();
+  // Entrar acá cuenta como actividad, y la lista se pide a la vez.
+  const [, rows] = await Promise.all([touchPresence(), getPresence()]);
 
   return (
     <>

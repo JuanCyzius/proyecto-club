@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
   LogOut, Coins, Gem, ScrollText, ChevronRight, Layers,
-  CalendarDays, Package, Target, Store, Shuffle, Shield, Users, Radio,
+  CalendarDays, Package, Target, Store, Shuffle, Shield, Users, Radio, Trophy,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
@@ -12,6 +12,12 @@ import { Counter } from "@/components/ui/counter";
 import { Section, List, Row, EmptyState, Chip } from "@/components/ui/layout";
 import { ClubCrest } from "@/components/club/club-crest";
 import { coins as fmtCoins } from "@/lib/format";
+import {
+  XpBar,
+  StatsGrid,
+  CollectionBlock,
+  type ProfileStats,
+} from "./profile-stats";
 import { signOut } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +51,7 @@ export default async function ClubPage() {
   const today = new Date().toISOString().slice(0, 10);
   const dailyReady = profile.last_daily !== today;
 
-  const [{ data: ledger }, { data: matches }, { count: cardCount }] =
+  const [{ data: ledger }, { data: matches }, { count: cardCount }, { data: statsRows }] =
     await Promise.all([
       supabase
         .from("coin_ledger")
@@ -65,7 +71,10 @@ export default async function ClubPage() {
         .select("id", { count: "exact", head: true })
         .eq("owner_id", profile.id)
         .eq("status", "in_club"),
+      supabase.rpc("my_profile_stats"),
     ]);
+
+  const stats = ((statsRows ?? []) as ProfileStats[])[0] ?? null;
 
   return (
     <>
@@ -119,9 +128,19 @@ export default async function ClubPage() {
         </div>
       </div>
 
+      {/* Progresión */}
+      {stats && <XpBar s={stats} />}
+
+      {/* Estadísticas */}
+      {stats && <StatsGrid s={stats} />}
+
+      {/* Colección */}
+      {stats && <CollectionBlock s={stats} />}
+
       {/* Accesos */}
       <Section label="Tu club">
         <List>
+          <NavRow href="/leagues" icon={Trophy} label="Ligas y PvP" />
           <NavRow
             href="/objectives"
             icon={Target}

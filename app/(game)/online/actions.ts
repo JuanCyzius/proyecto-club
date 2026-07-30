@@ -31,3 +31,14 @@ export async function getPresence(): Promise<PresenceRow[]> {
   if (error) return [];
   return (data ?? []) as PresenceRow[];
 }
+
+/**
+ * Cuántos hay en línea. Registra el latido de paso, así la barra de
+ * navegación hace UNA sola llamada en vez de dos.
+ */
+export async function onlineCount(): Promise<number> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("online_count");
+  if (error) return 0;
+  return typeof data === "number" ? data : 0;
+}

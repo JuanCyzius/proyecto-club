@@ -49,11 +49,12 @@ export default async function CollectionPage() {
     inSquad: inSquad.has(r.id),
   })) as CollectionCard[];
 
-  const { data: items } = await supabase
+  const itemsQuery = supabase
     .from("user_items")
     .select("item_code, qty, item:items(name, description, kind, power)")
     .eq("user_id", user.id)
     .gt("qty", 0);
+  const { data: items } = await itemsQuery;
 
   const inventory = ((items ?? []) as any[]).map((r) => ({
     code: r.item_code as string,

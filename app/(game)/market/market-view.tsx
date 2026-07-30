@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { Portrait } from "@/components/player-card/portrait";
 import { Counter } from "@/components/ui/counter";
 import { Notice } from "@/components/ui/layout";
 import { useRouter } from "next/navigation";
@@ -11,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Tabs } from "@/components/ui/tabs";
 import { ClubCrest } from "@/components/club/club-crest";
-import { faceElements } from "@/components/player-card/avatar";
 import { flagEmoji } from "@/lib/flags";
 import { timeLeft } from "@/lib/format";
 import { RARITIES, RARITY_LABEL, type Rarity } from "@/lib/players";
@@ -211,15 +211,7 @@ export function MarketView({
                   onClick={() => openListing(l)}
                   className="flex w-full items-center gap-2.5 rounded-xl border border-border bg-surface px-2.5 py-2 text-left transition hover:border-turf/50"
                 >
-                  <svg
-                    width={32}
-                    height={32}
-                    viewBox="0 0 100 100"
-                    className="shrink-0 rounded-full bg-bg"
-                    dangerouslySetInnerHTML={{
-                      __html: faceElements(l.player_name, 50, 48, 33),
-                    }}
-                  />
+                  <Portrait name={l.player_name} size={32} className="shrink-0  bg-bg" />
                   <span className="font-display w-7 shrink-0 text-center text-lg font-extrabold">
                     {l.overall}
                   </span>
@@ -311,15 +303,7 @@ export function MarketView({
         {selected && (
           <div className="space-y-4">
             <div className="flex items-center gap-3 rounded-xl border border-border bg-surface-2 p-3">
-              <svg
-                width={44}
-                height={44}
-                viewBox="0 0 100 100"
-                className="shrink-0 rounded-full bg-bg"
-                dangerouslySetInnerHTML={{
-                  __html: faceElements(selected.player_name, 50, 48, 33),
-                }}
-              />
+              <Portrait name={selected.player_name} size={44} className="shrink-0  bg-bg" />
               <div className="min-w-0 flex-1">
                 <p className="font-display text-xl font-extrabold">
                   {selected.overall}{" "}

@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAuthState } from "@/lib/auth";
 import { BottomNav } from "@/components/nav/bottom-nav";
-import { PresenceBeat } from "@/components/presence-beat";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +22,6 @@ export default async function GameLayout({
         {children}
       </main>
       <BottomNav />
-      <PresenceBeat />
     </div>
   );
 }

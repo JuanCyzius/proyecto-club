@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Portrait } from "@/components/player-card/portrait";
 import { Notice } from "@/components/ui/layout";
 import { useRouter } from "next/navigation";
 import {
@@ -17,7 +18,6 @@ import { cn } from "@/lib/utils";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ClubCrest } from "@/components/club/club-crest";
-import { faceElements } from "@/components/player-card/avatar";
 import { flagEmoji } from "@/lib/flags";
 import { RARITY_LABEL, type Rarity } from "@/lib/players";
 import {
@@ -461,13 +461,7 @@ function CandidateRow({
       disabled={disabled}
       className="flex w-full items-center gap-3 rounded-xl border border-border bg-surface p-2.5 text-left transition hover:border-turf active:scale-[0.99] disabled:opacity-50"
     >
-      <svg
-        width={42}
-        height={42}
-        viewBox="0 0 100 100"
-        className="shrink-0 rounded-full bg-bg"
-        dangerouslySetInnerHTML={{ __html: faceElements(c.name, 50, 48, 33) }}
-      />
+      <Portrait name={c.name} size={42} className="shrink-0  bg-bg" />
       <span className="font-display w-9 shrink-0 text-center text-2xl font-extrabold">
         {c.overall}
       </span>

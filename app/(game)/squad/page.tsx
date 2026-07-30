@@ -14,23 +14,34 @@ export default async function SquadPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Todo lo que no depende de otra consulta se pide a la vez: antes eran
+  // seis viajes encadenados a la base y ahora son dos rondas.
+  const [{ data: me }, { data: cardRows }, { data: squad }, { data: slotRows }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("crest_chosen")
+        .eq("id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("player_cards")
+        .select(
+          "id, stamina, template:player_templates(position, positions, overall, rarity, attributes, gk_attributes, identity:player_identities(name, club_name, league_name, nationality))"
+        )
+        .eq("owner_id", user.id),
+      supabase
+        .from("squads")
+        .select("formation, tactics")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabase.from("squad_slots").select("slot, card_id").eq("user_id", user.id),
+    ]);
+
   // El escudo del club se elige antes que el plantel inicial.
-  const { data: me } = await supabase
-    .from("profiles")
-    .select("crest_chosen")
-    .eq("id", user.id)
-    .maybeSingle();
   if (me && !me.crest_chosen) redirect("/crest");
 
-  // Recuperación por descanso antes de leer las cartas
-  await supabase.rpc("recover_stamina");
-
-  const { data: cardRows } = await supabase
-    .from("player_cards")
-    .select(
-      "id, stamina, template:player_templates(position, positions, overall, rarity, attributes, gk_attributes, identity:player_identities(name, club_name, league_name, nationality))"
-    )
-    .eq("owner_id", user.id);
+  // La recuperación por descanso no bloquea el render: si tarda, da igual.
+  void supabase.rpc("recover_stamina");
 
   const cards: OwnedCard[] = (cardRows ?? []).map((r: any) => ({
     id: r.id,
@@ -48,7 +59,6 @@ export default async function SquadPage() {
   }));
 
   if (cards.length === 0) {
-    // Si el catálogo está vacío no hay nada que repartir: avisamos claramente.
     const { count: templateCount } = await supabase
       .from("player_templates")
       .select("id", { count: "exact", head: true });
@@ -60,17 +70,6 @@ export default async function SquadPage() {
       </div>
     );
   }
-
-  const { data: squad } = await supabase
-    .from("squads")
-    .select("formation, tactics")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const { data: slotRows } = await supabase
-    .from("squad_slots")
-    .select("slot, card_id")
-    .eq("user_id", user.id);
 
   const initialSlots: Record<string, string> = {};
   for (const s of slotRows ?? []) {

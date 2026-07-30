@@ -89,6 +89,30 @@ $$;
 grant execute on function public.presence_list() to authenticated;
 
 -- ------------------------------------------------------------
+-- Contador liviano para la barra de navegación.
+-- Devuelve un solo número y de paso registra el latido: una llamada
+-- en vez de dos, que es lo que se repite cada pocos minutos.
+-- ------------------------------------------------------------
+create or replace function public.online_count()
+returns int language plpgsql security definer set search_path = public as $$
+declare v_user uuid := auth.uid(); v_last timestamptz; v_n int;
+begin
+  if v_user is null then return 0; end if;
+
+  -- Latido con freno: como mucho una escritura por minuto y usuario.
+  select last_seen into v_last from public.profiles where id = v_user;
+  if v_last is null or now() - v_last >= interval '60 seconds' then
+    update public.profiles set last_seen = now() where id = v_user;
+  end if;
+
+  select count(*)::int into v_n from public.profiles
+    where last_seen > now() - interval '3 minutes';
+  return v_n;
+end; $$;
+revoke all on function public.online_count() from public;
+grant execute on function public.online_count() to authenticated;
+
+-- ------------------------------------------------------------
 -- Comprobación
 -- ------------------------------------------------------------
 select
