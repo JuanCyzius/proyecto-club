@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Home, Users, Store, Play, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { onlineCount } from "@/app/(game)/online/actions";
+import { navCounts } from "@/app/(game)/online/actions";
 
 const items = [
   { href: "/club", label: "Club", icon: Home },
   { href: "/squad", label: "Plantilla", icon: Users },
-  { href: "/play", label: "Jugar", icon: Play },
+  { href: "/play", label: "Jugar", icon: Play, invites: true },
   { href: "/market", label: "Mercado", icon: Store },
   { href: "/online", label: "En línea", icon: UserRound, presence: true },
 ];
@@ -18,19 +18,21 @@ const items = [
 export function BottomNav() {
   const pathname = usePathname();
   const [online, setOnline] = useState<number | null>(null);
+  const [invites, setInvites] = useState(0);
   const [bump, setBump] = useState(false);
 
   // El layout no se desmonta al navegar, así que este intervalo vive una
   // sola vez para toda la sesión. Late cada 90 s y solo con la pestaña
-  // visible: registra presencia y trae el conteo en la misma llamada.
+  // visible: registra presencia y trae ambos conteos en la misma llamada.
   useEffect(() => {
     let alive = true;
 
     const tick = async () => {
       if (document.visibilityState !== "visible") return;
       try {
-        const n = await onlineCount();
+        const { online: n, invites: inv } = await navCounts();
         if (!alive) return;
+        setInvites(inv);
         setOnline((prev) => {
           if (prev !== null && n !== prev) {
             setBump(true);
@@ -76,7 +78,7 @@ export function BottomNav() {
           />
         )}
 
-        {items.map(({ href, label, icon: Icon, presence }, i) => {
+        {items.map(({ href, label, icon: Icon, presence, invites: showInvites }, i) => {
           const active = i === activeIndex;
           return (
             <Link
@@ -110,6 +112,20 @@ export function BottomNav() {
                     aria-label={`${online} en línea`}
                   >
                     {online}
+                  </span>
+                )}
+
+                {/* Invitaciones pendientes: retos 1v1 y duelos dirigidos */}
+                {showInvites && invites > 0 && (
+                  <span
+                    className={cn(
+                      "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1",
+                      "bg-danger text-[9px] font-extrabold tabular-nums text-white",
+                      "ring-2 ring-surface"
+                    )}
+                    aria-label={`${invites} invitaciones pendientes`}
+                  >
+                    {invites}
                   </span>
                 )}
               </span>

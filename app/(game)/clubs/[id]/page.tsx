@@ -7,6 +7,7 @@ import { Section, List, Row, StatTile, EmptyState } from "@/components/ui/layout
 import { ClubCrest } from "@/components/club/club-crest";
 import { Avatar } from "@/components/ui/avatar";
 import { coins as fmt } from "@/lib/format";
+import { ChallengeActions } from "./challenge-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +86,10 @@ export default async function ClubDetail({
         <StatTile label="Mejor jugador" value={s.best_overall || "—"} accent="trophy" />
         <StatTile label="Plantel" value={s.squad_size} />
       </div>
+
+      {params.id !== user.id && (
+        <ChallengeActions targetId={params.id} targetName={s.club_name} />
+      )}
 
       <div className="rounded-2xl border border-trophy/35 bg-trophy-soft/20 px-4 py-3 text-center">
         <p className="text-[11px] uppercase tracking-wide text-muted">

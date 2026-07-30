@@ -54,11 +54,14 @@ export async function playPvpMatch(matchId: string): Promise<PvpResult> {
   }
   if (!match.away_user) return { ok: false, error: "Ese partido no es PvP." };
 
-  // Plantillas reales de ambos, cargadas en el servidor
-  const home = await buildHomeTeam(supabase, match.home_user);
+  // Plantillas reales de ambos, cargadas en el servidor.
+  // Se usa el cliente admin porque las políticas RLS solo permiten
+  // leer las cartas propias: con la sesión del usuario, la plantilla
+  // del rival volvía vacía y el partido fallaba con "once incompleto".
+  const home = await buildHomeTeam(admin, match.home_user);
   if ("error" in home)
     return { ok: false, error: `Local: ${home.error}` };
-  const away = await buildHomeTeam(supabase, match.away_user);
+  const away = await buildHomeTeam(admin, match.away_user);
   if ("error" in away)
     return { ok: false, error: `Visitante: ${away.error}` };
 

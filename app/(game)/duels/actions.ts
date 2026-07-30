@@ -14,6 +14,7 @@ export type OpenDuel = {
   stake_rarity: string | null;
   created_at: string;
   is_mine: boolean;
+  for_you: boolean;
 };
 
 export type DuelHistory = {
@@ -92,7 +93,8 @@ export async function createDuel(
   shots: number[],
   dives: number[],
   stakeCoins: number,
-  cardId: string | null
+  cardId: string | null,
+  targetId: string | null = null
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = createClient();
   const { error } = await supabase.rpc("duel_create", {
@@ -100,6 +102,7 @@ export async function createDuel(
     p_dives: dives,
     p_stake_coins: stakeCoins,
     p_card_id: cardId,
+    p_target: targetId,
   });
   if (error) return { ok: false, error: friendly(error.message ?? "") };
   revalidatePath("/duels");

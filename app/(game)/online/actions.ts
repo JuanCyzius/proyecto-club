@@ -42,3 +42,19 @@ export async function onlineCount(): Promise<number> {
   if (error) return 0;
   return typeof data === "number" ? data : 0;
 }
+
+/**
+ * Contadores para la barra: en línea + invitaciones pendientes
+ * (partidos PvP por jugar y duelos dirigidos a vos). Registra el
+ * latido de presencia en la misma llamada. Si la migración 0036 no
+ * corrió todavía, cae al conteo viejo sin romper nada.
+ */
+export async function navCounts(): Promise<{ online: number; invites: number }> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("nav_counts");
+  if (error) {
+    return { online: await onlineCount(), invites: 0 };
+  }
+  const d = data as { online?: number; invites?: number } | null;
+  return { online: d?.online ?? 0, invites: d?.invites ?? 0 };
+}

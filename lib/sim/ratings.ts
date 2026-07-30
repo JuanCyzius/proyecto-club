@@ -113,18 +113,52 @@ export function computeUnits(team: SimTeam, isHome: boolean): Units {
     defense *= 1.03;
   }
 
-  // Ventaja de local
-  if (isHome) {
-    attack *= 1.04;
-    defense *= 1.03;
-    midfield *= 1.02;
-  }
+  // Ventaja de local: se aplica FUERA del amplificador de brecha
+  // (ver amplifyUnitGap), para que no se infle artificialmente.
+  const u: Units = { attack, midfield, defense, finishing, gk };
+  return isHome ? applyHomeAdvantage(u) : u;
+}
 
-  return { attack, midfield, defense, finishing, gk };
+export function applyHomeAdvantage(u: Units): Units {
+  return {
+    ...u,
+    attack: u.attack * 1.04,
+    defense: u.defense * 1.03,
+    midfield: u.midfield * 1.02,
+  };
 }
 
 export function tempoMultiplier(a: SimTeam, b: SimTeam): number {
   const score = (t: SimTeam) =>
     t.tactics.tempo === "fast" ? 1.15 : t.tactics.tempo === "slow" ? 0.88 : 1;
   return (score(a) + score(b)) / 2;
+}
+
+// ------------------------------------------------------------
+// Amplificador de brecha: la media general pesa MUCHO.
+//
+// El motor original era muy plano: un equipo de 72 empataba seguido
+// contra uno de 80. Esto separa a los dos equipos según su distancia
+// real en cada unidad: con brecha 0 no cambia nada; a +4 de media el
+// mejor ya domina; a +6 o más es prácticamente imposible ganarle.
+// Calibrado por simulación (ver tests/sim/run-tests.ts).
+// ------------------------------------------------------------
+const GAP_AMP = 3.2;
+
+export function amplifyUnitGap(a: Units, b: Units): [Units, Units] {
+  const keys: (keyof Units)[] = [
+    "attack",
+    "midfield",
+    "defense",
+    "finishing",
+    "gk",
+  ];
+  const outA = { ...a };
+  const outB = { ...b };
+  for (const k of keys) {
+    const mean = (a[k] + b[k]) / 2;
+    outA[k] = Math.max(1, mean + (a[k] - mean) * GAP_AMP);
+    outB[k] = Math.max(1, mean + (b[k] - mean) * GAP_AMP);
+  }
+  return [outA, outB];
 }

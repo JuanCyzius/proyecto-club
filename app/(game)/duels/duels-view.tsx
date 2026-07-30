@@ -44,12 +44,14 @@ export function DuelsView({
   coins,
   level,
   userId,
+  rival,
 }: {
   open: OpenDuel[];
   history: DuelHistory[];
   coins: number;
   level: number;
   userId: string;
+  rival: { id: string; name: string } | null;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<"open" | "history">("open");
@@ -136,7 +138,7 @@ export function DuelsView({
           router.refresh();
         } else setError(res.error);
       } else {
-        const res = await createDuel(shots, dives, coinsBet, card);
+        const res = await createDuel(shots, dives, coinsBet, card, rival?.id ?? null);
         if (res.ok) {
           reset();
           router.refresh();
@@ -446,8 +448,20 @@ export function DuelsView({
 
       {error && <Notice tone="error">{error}</Notice>}
 
+      {rival && (
+        <div className="rounded-2xl border border-turf/40 bg-turf-soft/15 px-4 py-3">
+          <p className="text-sm font-bold text-turf">
+            Reto dirigido a {rival.name}
+          </p>
+          <p className="text-[11px] text-muted">
+            El duelo que crees ahora solo lo va a poder aceptar ese club.
+          </p>
+        </div>
+      )}
+
       <Button fullWidth size="lg" onClick={beginCreate}>
-        <Target size={17} /> Crear desafío
+        <Target size={17} />
+        {rival ? `Retar a ${rival.name}` : "Crear desafío"}
       </Button>
 
       <Tabs
@@ -508,8 +522,9 @@ export function DuelsView({
                     />
                   )}
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-bold">
+                    <span className="flex items-center gap-1.5 truncate text-sm font-bold">
                       {d.club_name}
+                      {d.for_you && <Chip tone="turf">Para vos</Chip>}
                     </span>
                     <span className="text-[11px] text-muted">
                       @{d.username} · Nivel {d.challenger_level}

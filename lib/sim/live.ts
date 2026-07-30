@@ -18,7 +18,12 @@ import type {
   SimTeam,
   TeamStats,
 } from "./types";
-import { computeUnits, tempoMultiplier } from "./ratings";
+import {
+  computeUnits,
+  tempoMultiplier,
+  amplifyUnitGap,
+  applyHomeAdvantage,
+} from "./ratings";
 
 // ---------- Tipos ----------
 export type LivePlayer = SimPlayer & {
@@ -216,7 +221,7 @@ function unitsFor(s: LiveState, side: Side) {
       bench: t.bench,
       tactics: t.tactics,
     },
-    side === "home"
+    false // la ventaja de local se aplica tras amplificar la brecha
   );
 
   const boostActive = s.minute <= t.boost.until;
@@ -292,8 +297,12 @@ function resolveChance(
 ) {
   const atk = teamOf(s, atkSide);
   const def = teamOf(s, other(atkSide));
-  const ua = unitsFor(s, atkSide);
-  const ud = unitsFor(s, other(atkSide));
+  let [ua, ud] = amplifyUnitGap(
+    unitsFor(s, atkSide),
+    unitsFor(s, other(atkSide))
+  );
+  if (atkSide === "home") ua = applyHomeAdvantage(ua);
+  else ud = applyHomeAdvantage(ud);
 
   atk.stats.chances++;
   const hero = forcedHero ?? pickWeighted(rng, atk.onPitch, attackWeight);
@@ -371,8 +380,8 @@ function playMinute(s: LiveState, rng: Rng, bag: MatchEvent[]): boolean {
     { name: "", starters: [], bench: [], tactics: s.away.tactics }
   );
 
-  const uh = unitsFor(s, "home");
-  const ua = unitsFor(s, "away");
+  const [rawH, ua] = amplifyUnitGap(unitsFor(s, "home"), unitsFor(s, "away"));
+  const uh = applyHomeAdvantage(rawH);
   const possHome = uh.midfield / (uh.midfield + ua.midfield);
   s.home.stats.possession = Math.round(possHome * 100);
   s.away.stats.possession = 100 - s.home.stats.possession;

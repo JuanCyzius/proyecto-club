@@ -1,4 +1,9 @@
-import { computeUnits, tempoMultiplier } from "./ratings";
+import {
+  computeUnits,
+  tempoMultiplier,
+  amplifyUnitGap,
+  applyHomeAdvantage,
+} from "./ratings";
 import { makeRng, clamp } from "./rng";
 import { makeTeamState, runMinutes, type MatchState, type TeamState } from "./events";
 import type {
@@ -102,8 +107,13 @@ function shootout(s: MatchState): [number, number] {
 
 export function simulateMatch(input: SimInput): MatchResult {
   const rng = makeRng(input.seed);
-  const unitsHome = computeUnits(input.home, true);
-  const unitsAway = computeUnits(input.away, false);
+  // Amplificar la brecha con las unidades "crudas" y recién después
+  // sumar la ventaja de local (así no se infla con la amplificación).
+  const [rawHome, unitsAway] = amplifyUnitGap(
+    computeUnits(input.home, false),
+    computeUnits(input.away, false)
+  );
+  const unitsHome = applyHomeAdvantage(rawHome);
 
   const home = makeTeamState("home", input.home, unitsHome);
   const away = makeTeamState("away", input.away, unitsAway);

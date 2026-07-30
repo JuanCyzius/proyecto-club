@@ -1,5 +1,6 @@
 import "server-only";
 import type { createClient } from "@/lib/supabase/server";
+import type { createAdminClient } from "@/lib/supabase/admin";
 import {
   FORMATIONS,
   BENCH_SLOTS,
@@ -35,7 +36,7 @@ type OwnedRow = {
 };
 
 export async function buildHomeTeam(
-  supabase: ReturnType<typeof createClient>,
+  supabase: ReturnType<typeof createClient> | ReturnType<typeof createAdminClient>,
   userId: string
 ): Promise<{ team: SimTeam } | { error: string }> {
   const { data: profile } = await supabase

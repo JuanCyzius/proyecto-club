@@ -152,8 +152,14 @@ export function SquadBuilder({
   function assign(slot: string, cardId: string | null) {
     setSlots((prev) => {
       const next = { ...prev };
-      if (cardId) next[slot] = cardId;
-      else delete next[slot];
+      if (cardId) {
+        // El mismo jugador no puede ocupar dos huecos: si venía de la
+        // banca (o de otro puesto), se lo saca de ahí automáticamente.
+        for (const [k, v] of Object.entries(next)) {
+          if (k !== slot && v === cardId) delete next[k];
+        }
+        next[slot] = cardId;
+      } else delete next[slot];
       return next;
     });
     markDirty();
@@ -229,6 +235,14 @@ export function SquadBuilder({
   const pickerCandidates = useMemo(() => {
     if (!picker) return [];
     const taken = assignedElsewhere(picker.slot);
+    // Para un puesto del ONCE, los suplentes también son candidatos:
+    // al elegirlos se los saca de la banca automáticamente (ver assign).
+    if (picker.pos) {
+      for (const b of BENCH_SLOTS) {
+        const id = slots[b];
+        if (id) taken.delete(id);
+      }
+    }
     const list = cards.filter((c) => !taken.has(c.id));
     if (picker.pos) {
       const pos = picker.pos;
@@ -420,6 +434,7 @@ export function SquadBuilder({
             const id = slots[b];
             const c = id ? cardById.get(id) : undefined;
             const inj = c ? (c.injuryMatches ?? 0) > 0 : false;
+            const st = c && typeof c.stamina === "number" ? c.stamina : 100;
             return (
               <button
                 key={b}
@@ -446,6 +461,18 @@ export function SquadBuilder({
                     </span>
                     <span className="text-[9px] font-bold text-muted">
                       {c.position}
+                      <span
+                        className={cn(
+                          "ml-1 tabular-nums",
+                          st >= 85
+                            ? "text-turf"
+                            : st >= 65
+                              ? "text-trophy"
+                              : "text-danger"
+                        )}
+                      >
+                        {Math.round(st)}%
+                      </span>
                     </span>
                     <span className="max-w-[52px] truncate text-[9px] text-muted">
                       {shortName(c.name)}
@@ -469,6 +496,7 @@ export function SquadBuilder({
           <div className="flex flex-wrap gap-2">
             {reserveCards.map((c) => {
               const inj = (c.injuryMatches ?? 0) > 0;
+              const st = typeof c.stamina === "number" ? c.stamina : 100;
               return (
                 <span
                   key={c.id}
@@ -481,6 +509,14 @@ export function SquadBuilder({
                   <span className="text-muted">{c.position}</span>
                   <Flag nation={c.nationality} size={12} />
                   <span className="text-text/80">{shortName(c.name)}</span>
+                  <span
+                    className={cn(
+                      "tabular-nums text-[10px] font-bold",
+                      st >= 85 ? "text-turf" : st >= 65 ? "text-trophy" : "text-danger"
+                    )}
+                  >
+                    {Math.round(st)}%
+                  </span>
                   {inj && <HeartPulse size={11} className="text-danger" />}
                 </span>
               );
@@ -577,6 +613,7 @@ export function SquadBuilder({
               ? positionFit(c.position, picker.pos)
               : null;
             const inj = (c.injuryMatches ?? 0) > 0;
+            const st = typeof c.stamina === "number" ? c.stamina : 100;
             // Química que tendría en ese hueco con el once actual
             const preview = picker?.pos
               ? playerChemistry(
@@ -624,6 +661,17 @@ export function SquadBuilder({
                         : `${c.clubName ?? "—"} · ${shortLeague(c.leagueName)}`}
                     </span>
                   </span>
+                </span>
+                <span className="w-9 shrink-0 text-right">
+                  <span
+                    className={cn(
+                      "block text-[11px] font-bold tabular-nums",
+                      st >= 85 ? "text-turf" : st >= 65 ? "text-trophy" : "text-danger"
+                    )}
+                  >
+                    {Math.round(st)}%
+                  </span>
+                  <span className="text-[9px] text-muted">energía</span>
                 </span>
                 {preview != null && (
                   <span
