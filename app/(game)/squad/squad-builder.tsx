@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Flag } from "@/components/ui/flag";
 import { Portrait } from "@/components/player-card/portrait";
-import { Check, X } from "lucide-react";
+import { Check, HeartPulse, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   FORMATIONS,
@@ -346,11 +346,15 @@ export function SquadBuilder({
               const fit = positionFit(c.position, slot.pos);
               const ch = chemBySlot.get(slot.code) ?? 0;
               const st = typeof c.stamina === "number" ? c.stamina : 100;
+              const inj = (c.injuryMatches ?? 0) > 0;
               return (
                 <button
                   key={slot.code}
                   onClick={() => setPicker({ slot: slot.code, pos: slot.pos })}
-                  className="flex w-full items-center gap-2 border-b border-border/60 px-2.5 py-2 text-left last:border-0 hover:bg-surface-2"
+                  className={cn(
+                    "flex w-full items-center gap-2 border-b border-border/60 px-2.5 py-2 text-left last:border-0 hover:bg-surface-2",
+                    inj && "bg-danger/5"
+                  )}
                 >
                   <span
                     className={cn(
@@ -365,13 +369,18 @@ export function SquadBuilder({
                     {c.overall}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-semibold">
+                    <span className="flex items-center gap-1 truncate text-[13px] font-semibold">
                       {c.name}
+                      {inj && (
+                        <HeartPulse size={11} className="shrink-0 text-danger" />
+                      )}
                     </span>
                     <span className="flex items-center gap-1 text-[10px] text-muted">
                       <Flag nation={c.nationality} size={12} />
                       <ClubCrest club={c.clubName} size={11} showFallback={false} />
-                      <span className="truncate">{c.clubName ?? "—"}</span>
+                      <span className="truncate">
+                        {inj ? `Lesionado · ${c.injuryMatches} part.` : (c.clubName ?? "—")}
+                      </span>
                     </span>
                   </span>
                   <span className="shrink-0 text-right">
@@ -410,19 +419,28 @@ export function SquadBuilder({
           {BENCH_SLOTS.map((b) => {
             const id = slots[b];
             const c = id ? cardById.get(id) : undefined;
+            const inj = c ? (c.injuryMatches ?? 0) > 0 : false;
             return (
               <button
                 key={b}
                 onClick={() => setPicker({ slot: b })}
                 className={cn(
-                  "flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-lg border text-center",
+                  "relative flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-lg border text-center",
                   c
-                    ? "border-border bg-surface"
+                    ? inj
+                      ? "border-danger/50 bg-danger/5"
+                      : "border-border bg-surface"
                     : "border-dashed border-border bg-surface/50 text-muted"
                 )}
               >
                 {c ? (
                   <>
+                    {inj && (
+                      <HeartPulse
+                        size={12}
+                        className="absolute right-1 top-1 text-danger"
+                      />
+                    )}
                     <span className="font-display text-sm font-extrabold">
                       {c.overall}
                     </span>
@@ -449,17 +467,24 @@ export function SquadBuilder({
             Reserva ({reserveCards.length})
           </p>
           <div className="flex flex-wrap gap-2">
-            {reserveCards.map((c) => (
-              <span
-                key={c.id}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2 py-1 text-xs"
-              >
-                <b className="font-display">{c.overall}</b>
-                <span className="text-muted">{c.position}</span>
-                <Flag nation={c.nationality} size={12} />
-                <span className="text-text/80">{shortName(c.name)}</span>
-              </span>
-            ))}
+            {reserveCards.map((c) => {
+              const inj = (c.injuryMatches ?? 0) > 0;
+              return (
+                <span
+                  key={c.id}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs",
+                    inj ? "border-danger/40 bg-danger/5" : "border-border bg-surface"
+                  )}
+                >
+                  <b className="font-display">{c.overall}</b>
+                  <span className="text-muted">{c.position}</span>
+                  <Flag nation={c.nationality} size={12} />
+                  <span className="text-text/80">{shortName(c.name)}</span>
+                  {inj && <HeartPulse size={11} className="text-danger" />}
+                </span>
+              );
+            })}
           </div>
         </div>
       )}
@@ -551,6 +576,7 @@ export function SquadBuilder({
             const fit = picker?.pos
               ? positionFit(c.position, picker.pos)
               : null;
+            const inj = (c.injuryMatches ?? 0) > 0;
             // Química que tendría en ese hueco con el once actual
             const preview = picker?.pos
               ? playerChemistry(
@@ -568,7 +594,10 @@ export function SquadBuilder({
               <button
                 key={c.id}
                 onClick={() => assign(picker!.slot, c.id)}
-                className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-surface-2 px-2.5 py-2 text-left transition hover:border-turf/50"
+                className={cn(
+                  "flex w-full items-center gap-2.5 rounded-lg border bg-surface-2 px-2.5 py-2 text-left transition hover:border-turf/50",
+                  inj ? "border-danger/40" : "border-border"
+                )}
               >
                 <Portrait name={c.name} size={32} className="shrink-0  bg-bg" />
                 <span className="font-display w-7 shrink-0 text-center text-lg font-extrabold">
@@ -583,13 +612,16 @@ export function SquadBuilder({
                   {c.position}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold">
+                  <span className="flex items-center gap-1 truncate text-sm font-semibold">
                     <Flag nation={c.nationality} size={12} /> {c.name}
+                    {inj && <HeartPulse size={12} className="shrink-0 text-danger" />}
                   </span>
                   <span className="flex items-center gap-1 truncate text-[10px] text-muted">
                     <ClubCrest club={c.clubName} size={12} showFallback={false} />
                     <span className="truncate">
-                      {c.clubName ?? "—"} · {shortLeague(c.leagueName)}
+                      {inj
+                        ? `Lesionado · ${c.injuryMatches} part.`
+                        : `${c.clubName ?? "—"} · ${shortLeague(c.leagueName)}`}
                     </span>
                   </span>
                 </span>
@@ -679,6 +711,7 @@ function PitchPlayer({
   const tier = chemTier(chem);
   const chemDots = Math.round(chem / 2); // 0-5
   const stamina = typeof card.stamina === "number" ? card.stamina : 100;
+  const injured = (card.injuryMatches ?? 0) > 0;
   const aura = RARITY_AURA[card.rarity] ?? RARITY_AURA.common;
 
   // Todo se dimensiona en % del ancho del campo (cqw): las fichas crecen
@@ -697,10 +730,21 @@ function PitchPlayer({
           height: "11.8cqw",
           maxWidth: "64px",
           maxHeight: "64px",
-          boxShadow: `0 0 0 2px ${aura.ring}, 0 0 10px 2px ${aura.glow}`,
+          boxShadow: injured
+            ? "0 0 0 2px #ef4444, 0 0 10px 2px rgba(239,68,68,0.6)"
+            : `0 0 0 2px ${aura.ring}, 0 0 10px 2px ${aura.glow}`,
         }}
       >
         <Portrait name={card.name} className="h-full w-full rounded-full" />
+        {injured && (
+          <span
+            className="absolute -left-[0.25em] -top-[0.25em] flex items-center justify-center rounded-full bg-danger text-bg ring-2 ring-bg"
+            style={{ width: "3.6cqw", height: "3.6cqw", minWidth: 13, minHeight: 13 }}
+            title={`Lesionado: ${card.injuryMatches} partido${(card.injuryMatches ?? 0) > 1 ? "s" : ""} de baja`}
+          >
+            <HeartPulse style={{ width: "70%", height: "70%" }} />
+          </span>
+        )}
         {/* Media */}
         <span
           className="absolute -left-[0.4em] -top-[0.3em] rounded-md bg-bg px-[0.35em] font-display font-extrabold leading-tight text-text ring-1 ring-border"

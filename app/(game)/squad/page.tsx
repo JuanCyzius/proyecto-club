@@ -26,7 +26,7 @@ export default async function SquadPage() {
       supabase
         .from("player_cards")
         .select(
-          "id, stamina, template:player_templates(position, positions, overall, rarity, attributes, gk_attributes, identity:player_identities(name, club_name, league_name, nationality))"
+          "id, stamina, injury_type, injury_matches_left, template:player_templates(position, positions, overall, rarity, attributes, gk_attributes, identity:player_identities(name, club_name, league_name, nationality))"
         )
         .eq("owner_id", user.id),
       supabase
@@ -56,6 +56,8 @@ export default async function SquadPage() {
     leagueName: r.template?.identity?.league_name ?? null,
     nationality: r.template?.identity?.nationality ?? null,
     stamina: typeof r.stamina === "number" ? r.stamina : 100,
+    injuryType: r.injury_type ?? null,
+    injuryMatches: typeof r.injury_matches_left === "number" ? r.injury_matches_left : 0,
   }));
 
   if (cards.length === 0) {

@@ -23,28 +23,28 @@ export async function quickSell(
   return { ok: true, value: Number(data) };
 }
 
-export async function applyItemToCard(
-  code: string,
-  cardId: string
-): Promise<{ ok: boolean; error?: string }> {
+/** Usa un ítem una vez: afecta a todo el plantel (no a una sola carta). */
+export async function applyItemToSquad(
+  code: string
+): Promise<{ ok: boolean; affected?: number; error?: string }> {
   const supabase = createClient();
-  const { error } = await supabase.rpc("use_item", {
+  const { data, error } = await supabase.rpc("use_item", {
     p_code: code,
-    p_card_id: cardId,
   });
   if (error) {
     const raw = error.message ?? "";
     if (raw.toLowerCase().includes("could not find")) {
       return {
         ok: false,
-        error: "Falta ejecutar la migración 0017_injuries_and_items.sql.",
+        error: "Falta ejecutar la migración 0032_recompensas_y_plantel.sql.",
       };
     }
     return { ok: false, error: raw.replace(/^.*?:\s*/, "") || "No se pudo usar el ítem." };
   }
   revalidatePath("/collection");
   revalidatePath("/squad");
-  return { ok: true };
+  const r = data as { affected?: number } | null;
+  return { ok: true, affected: r?.affected };
 }
 
 /** Descarta varios jugadores de una vez por monedas. */

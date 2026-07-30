@@ -255,4 +255,6 @@ export type OwnedCard = {
   leagueName?: string | null;
   nationality?: string | null;
   stamina?: number;
+  injuryType?: string | null;
+  injuryMatches?: number;
 };

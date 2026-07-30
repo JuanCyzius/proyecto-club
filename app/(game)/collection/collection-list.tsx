@@ -14,7 +14,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { PlayerCard } from "@/components/player-card/player-card";
 import { ClubCrest, clubLogo } from "@/components/club/club-crest";
 import { RARITY_LABEL, type OwnedCard, type Rarity } from "@/lib/players";
-import { quickSell, applyItemToCard, quickSellMany } from "./actions";
+import { quickSell, applyItemToSquad, quickSellMany } from "./actions";
 import { listCard, quickList } from "../market/actions";
 
 export type CollectionCard = OwnedCard & {
@@ -142,21 +142,22 @@ export function CollectionList({
     });
   }
 
-  function applyItem(code: string, cardId: string) {
+  function applyItem(code: string) {
     setError(null);
     setMsg(null);
     start(async () => {
-      const res = await applyItemToCard(code, cardId);
+      const res = await applyItemToSquad(code);
       if (res.ok) {
-        setMsg("Ítem aplicado.");
-        setSelected(null);
+        const n = res.affected ?? 0;
+        setMsg(
+          n > 0
+            ? `Aplicado a ${n} jugador${n > 1 ? "es" : ""} del plantel.`
+            : "Ítem aplicado."
+        );
         router.refresh();
       } else setError(res.error ?? "No se pudo usar el ítem.");
     });
   }
-
-  const healItems = inventory.filter((i) => i.kind === "heal");
-  const stamItems = inventory.filter((i) => i.kind === "stamina");
 
   return (
     <div className="space-y-4">
@@ -222,11 +223,25 @@ export function CollectionList({
                 <span className="font-display text-lg font-extrabold text-trophy">
                   ×{it.qty}
                 </span>
+                <button
+                  onClick={() => applyItem(it.code)}
+                  disabled={pending}
+                  className={cn(
+                    "shrink-0 rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold disabled:opacity-40",
+                    it.kind === "heal"
+                      ? "border-danger/40 bg-danger/10 text-danger"
+                      : "border-turf/40 bg-turf-soft/30 text-turf"
+                  )}
+                >
+                  Usar en el plantel
+                </button>
               </div>
             ))
           )}
           <p className="px-1 text-[11px] text-muted">
-            Para usarlos, tocá un jugador en la pestaña Jugadores.
+            Cada ítem se gasta una sola vez y afecta a todo el plantel: los
+            de curación curan a todos los lesionados que puedan curar, los
+            de energía recargan a todos los que estén por debajo del 100%.
           </p>
         </div>
       ) : (
@@ -431,53 +446,13 @@ export function CollectionList({
               </div>
             </div>
 
-            {/* Ítems aplicables */}
-            {(selected.injuryMatches ?? 0) > 0 && healItems.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-muted">Curar lesión</p>
-                {healItems.map((it) => {
-                  const enough = it.power >= (selected.injuryMatches ?? 0);
-                  return (
-                    <button
-                      key={it.code}
-                      onClick={() => applyItem(it.code, selected.id)}
-                      disabled={pending || !enough}
-                      className={cn(
-                        "flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-sm disabled:opacity-40",
-                        enough
-                          ? "border-danger/40 bg-danger/10 text-danger"
-                          : "border-border text-muted"
-                      )}
-                    >
-                      <HeartPulse size={15} />
-                      <span className="flex-1 text-left">{it.name}</span>
-                      <span className="font-bold">×{it.qty}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {(selected.stamina ?? 100) < 100 && stamItems.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-muted">
-                  Recuperar energía
-                </p>
-                {stamItems.map((it) => (
-                  <button
-                    key={it.code}
-                    onClick={() => applyItem(it.code, selected.id)}
-                    disabled={pending}
-                    className="flex w-full items-center gap-2 rounded-lg border border-turf/40 bg-turf-soft/30 px-3 py-2 text-sm text-turf disabled:opacity-40"
-                  >
-                    <Package size={15} />
-                    <span className="flex-1 text-left">
-                      {it.name} (+{it.power})
-                    </span>
-                    <span className="font-bold">×{it.qty}</span>
-                  </button>
-                ))}
-              </div>
+            {/* Los ítems de curación/energía ahora se usan desde la
+                pestaña Ítems y afectan a todo el plantel de una vez. */}
+            {((selected.injuryMatches ?? 0) > 0 || (selected.stamina ?? 100) < 100) && (
+              <p className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-center text-xs text-muted">
+                Para curarlo o recuperarle energía, usá un ítem desde la
+                pestaña Ítems: afecta a todo el plantel de una vez.
+              </p>
             )}
 
             {selected.inSquad && (
