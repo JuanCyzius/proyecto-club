@@ -13,7 +13,7 @@ export default async function DraftPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: state }, { data: config }, { data: profile }, { data: credits }] =
+  const [{ data: state }, { data: config }, { data: profile }, { data: credits }, { data: runsToday }] =
     await Promise.all([
       supabase.rpc("my_draft"),
       supabase
@@ -23,6 +23,7 @@ export default async function DraftPage() {
         .maybeSingle(),
       supabase.from("profiles").select("coins").eq("id", user.id).maybeSingle(),
       supabase.rpc("my_draft_credits"),
+      supabase.rpc("my_draft_runs_today"),
     ]);
 
   return (
@@ -34,7 +35,7 @@ export default async function DraftPage() {
       />
       <DraftView
         initial={(state as DraftState | null) ?? null}
-        entryCoins={config?.entry_coins ?? 2500}
+        entryCoins={config?.entry_coins ?? 2000}
         rewards={
           (config?.rewards as Record<
             string,
@@ -43,6 +44,8 @@ export default async function DraftPage() {
         }
         coins={profile?.coins ?? 0}
         credits={(credits ?? []) as PackCredit[]}
+        runsToday={typeof runsToday === "number" ? runsToday : 0}
+        maxRunsPerDay={3}
       />
     </div>
   );

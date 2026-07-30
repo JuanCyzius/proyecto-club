@@ -4,16 +4,64 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { simulateMatch } from "@/lib/sim";
+import { playerChemistry } from "@/lib/chemistry";
 import { buildAiTeam } from "../play/build-teams";
 import type { SimPlayer, SimTeam } from "@/lib/sim/types";
+import type { Attributes, GkAttributes } from "@/lib/players";
 import type { DraftPick, DraftState } from "./types";
 
 function friendly(raw: string): string {
   const m = raw.toLowerCase();
   if (m.includes("insufficient")) return "No te alcanzan las monedas.";
+  if (m.includes("3 drafts hoy")) return "Ya jugaste tus 3 drafts de hoy. Volvé mañana.";
   if (m.includes("could not find") || m.includes("does not exist"))
     return "Falta ejecutar la migración 0024_draft_mode.sql.";
   return raw.replace(/^.*?:\s*/, "") || "No se pudo completar.";
+}
+
+/**
+ * El once del draft se arma con jugadores de clubes/países distintos,
+ * así que casi nunca va a tener la química de un plantel armado a
+ * propósito. Esto la castiga de verdad: entre 0.82x (química nula) y
+ * 1.0x (química perfecta) sobre cada atributo.
+ */
+function chemistryFactor(picks: DraftPick[]): number {
+  if (picks.length === 0) return 1;
+  const squad = picks.map((p) => ({
+    cardPos: p.position,
+    slotPos: p.slot_pos,
+    club: p.club_name,
+    league: p.league_name,
+    nation: p.nationality,
+  }));
+  const avg =
+    squad.reduce((sum, p) => sum + playerChemistry(p, squad).total, 0) /
+    squad.length; // 0-10
+  return 0.82 + 0.018 * avg; // 10/10 => 1.00, 0/10 => 0.82
+}
+
+function scaleAttrs(a: Attributes, f: number): Attributes {
+  return {
+    pace: Math.round(a.pace * f),
+    shooting: Math.round(a.shooting * f),
+    passing: Math.round(a.passing * f),
+    defending: Math.round(a.defending * f),
+    physical: Math.round(a.physical * f),
+    dribbling: Math.round(a.dribbling * f),
+  };
+}
+
+function scaleGk(a: GkAttributes | null | undefined, f: number): GkAttributes | null {
+  if (!a) return null;
+  const scale = (v?: number) => (typeof v === "number" ? Math.round(v * f) : v);
+  return {
+    diving: scale(a.diving),
+    handling: scale(a.handling),
+    kicking: scale(a.kicking),
+    positioning: scale(a.positioning),
+    reflexes: scale(a.reflexes),
+    speed: scale(a.speed),
+  };
 }
 
 export type DraftResult =
@@ -83,14 +131,16 @@ export async function playDraftMatch(runId: string): Promise<
   if (run.status !== "playing")
     return { ok: false, error: "Todavía estás armando el equipo." };
 
-  // Once del draft
+  // Once del draft, con los atributos ajustados por la química real
+  // del plantel armado (clubes/países distintos = menos química).
+  const chemFactor = chemistryFactor(run.picks ?? []);
   const starters: SimPlayer[] = (run.picks ?? []).map((p: DraftPick) => ({
     name: p.name,
     position: p.position,
     slotPos: p.slot_pos,
-    attributes: p.attributes,
-    overall: p.overall,
-    gkAttributes: p.gk_attributes ?? null,
+    attributes: scaleAttrs(p.attributes, chemFactor),
+    overall: Math.round(p.overall * chemFactor),
+    gkAttributes: scaleGk(p.gk_attributes, chemFactor),
   }));
   if (starters.length < 11)
     return { ok: false, error: "El once del draft está incompleto." };
@@ -114,8 +164,10 @@ export async function playDraftMatch(runId: string): Promise<
     },
   };
 
-  // El rival sube de nivel con cada victoria
-  const tier = ["t75", "t80", "t80", "t85", "t85"][run.wins] ?? "t80";
+  // Escalera de rivales: exige un equipo cada vez mejor armado (nivel
+  // + química) para sostener la racha. Llegar a 3 victorias ya cuesta,
+  // y las 5 solo están al alcance de un muy buen plantel.
+  const tier = ["t80", "t85", "t85", "t90", "t95"][run.wins] ?? "t90";
   const { data: drawn } = await supabase.rpc("random_opponent", {
     p_tier: tier,
   });
@@ -188,19 +240,4 @@ export async function playDraftMatch(runId: string): Promise<
       ? { coins: r.coins ?? 0, packs: r.packs ?? [] }
       : undefined,
   };
-}
-
-export async function redeemPack(
-  creditId: number
-): Promise<DraftResult> {
-  const supabase = createClient();
-  const idem = `draft-${creditId}-${Date.now()}`;
-  const { data, error } = await supabase.rpc("redeem_draft_pack", {
-    p_credit_id: creditId,
-    p_idem: idem,
-  });
-  if (error) return { ok: false, error: friendly(error.message ?? "") };
-  revalidatePath("/draft");
-  revalidatePath("/collection");
-  return { ok: true, data };
 }

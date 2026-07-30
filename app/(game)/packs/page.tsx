@@ -12,19 +12,21 @@ export default async function PacksPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: packs }, { data: profile }, { data: shopItems }] = await Promise.all([
-    supabase
-      .from("packs")
-      .select("id, code, name, description, price_coins, drop_table")
-      .eq("active", true)
-      .order("sort", { ascending: true }),
-    supabase.from("profiles").select("coins").eq("id", user.id).maybeSingle(),
-    supabase
-      .from("items")
-      .select("code, name, description, kind, power, price_coins, rarity")
-      .eq("active", true)
-      .order("sort", { ascending: true }),
-  ]);
+  const [{ data: packs }, { data: profile }, { data: shopItems }, { data: draftCredits }] =
+    await Promise.all([
+      supabase
+        .from("packs")
+        .select("id, code, name, description, price_coins, drop_table")
+        .eq("active", true)
+        .order("sort", { ascending: true }),
+      supabase.from("profiles").select("coins").eq("id", user.id).maybeSingle(),
+      supabase
+        .from("items")
+        .select("code, name, description, kind, power, price_coins, rarity")
+        .eq("active", true)
+        .order("sort", { ascending: true }),
+      supabase.rpc("my_draft_credits"),
+    ]);
 
   return (
     <div className="space-y-4">
@@ -37,6 +39,13 @@ export default async function PacksPage() {
         packs={packs ?? []}
         coins={profile?.coins ?? 0}
         items={(shopItems ?? []) as ShopItem[]}
+        draftCredits={
+          (draftCredits ?? []) as {
+            id: number;
+            pack_code: string;
+            pack_name: string;
+          }[]
+        }
       />
     </div>
   );

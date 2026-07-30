@@ -4,14 +4,14 @@ import { useEffect, useState, useTransition } from "react";
 import { Counter } from "@/components/ui/counter";
 import { Notice } from "@/components/ui/layout";
 import { useRouter } from "next/navigation";
-import { Coins, Sparkles, ChevronRight, HeartPulse, Package } from "lucide-react";
+import { Coins, Sparkles, ChevronRight, HeartPulse, Package, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { RARITIES, RARITY_LABEL, type Rarity } from "@/lib/players";
 import { Tabs } from "@/components/ui/tabs";
-import { openPack, buyItem } from "./actions";
+import { openPack, buyItem, openDraftCreditPack } from "./actions";
 import type { PulledCard } from "./types";
 import { PackOpening } from "./pack-opening";
 
@@ -51,15 +51,19 @@ export function PackStore({
   packs,
   coins,
   items,
+  draftCredits,
 }: {
   packs: Pack[];
   coins: number;
   items: ShopItem[];
+  draftCredits: { id: number; pack_code: string; pack_name: string }[];
 }) {
   const router = useRouter();
   const [balance, setBalance] = useState(coins);
   // El saldo cambia en otras pantallas: se resincroniza con el real.
   useEffect(() => setBalance(coins), [coins]);
+  const [credits, setCredits] = useState(draftCredits);
+  useEffect(() => setCredits(draftCredits), [draftCredits]);
   const [tab, setTab] = useState<"packs" | "items">("packs");
   const [odds, setOdds] = useState<Pack | null>(null);
   const [pulled, setPulled] = useState<PulledCard[] | null>(null);
@@ -79,6 +83,21 @@ export function PackStore({
         return;
       }
       setBalance((b) => b - (p.price_coins ?? 0));
+      setPulled(res.cards);
+    });
+  }
+
+  function openCredit(creditId: number) {
+    setError(null);
+    setBusyId(`credit${creditId}`);
+    start(async () => {
+      const res = await openDraftCreditPack(creditId);
+      setBusyId(null);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setCredits((c) => c.filter((x) => x.id !== creditId));
       setPulled(res.cards);
     });
   }
@@ -172,6 +191,33 @@ export function PackStore({
           Los ítems se usan desde tu colección. También salen dentro de los
           sobres.
         </p>
+      )}
+
+      {/* Sobres ganados en el Draft: gratis, se abren desde acá */}
+      {tab === "packs" && credits.length > 0 && (
+        <div className="space-y-2 rounded-2xl border border-trophy/40 bg-trophy-soft/20 p-3">
+          <p className="flex items-center gap-1.5 text-sm font-bold text-trophy">
+            <Trophy size={15} /> Ganados en el Draft
+          </p>
+          {credits.map((c) => (
+            <div
+              key={c.id}
+              className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2"
+            >
+              <Sparkles size={15} className="shrink-0 text-trophy" />
+              <span className="flex-1 text-sm font-semibold">
+                {c.pack_name}
+              </span>
+              <Button
+                size="sm"
+                disabled={pending}
+                onClick={() => openCredit(c.id)}
+              >
+                {busyId === `credit${c.id}` ? "…" : "Abrir gratis"}
+              </Button>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Sobres */}

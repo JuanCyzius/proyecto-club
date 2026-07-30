@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Flag } from "@/components/ui/flag";
 import { Portrait } from "@/components/player-card/portrait";
 import { Notice } from "@/components/ui/layout";
@@ -13,7 +13,6 @@ import {
   Check,
   X,
   Package,
-  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardBody } from "@/components/ui/card";
@@ -24,7 +23,6 @@ import {
   abandonDraft,
   pickPlayer,
   playDraftMatch,
-  redeemPack,
   startDraft,
 } from "./actions";
 import type { DraftCandidate, DraftState, PackCredit } from "./types";
@@ -51,15 +49,25 @@ export function DraftView({
   rewards,
   coins,
   credits,
+  runsToday,
+  maxRunsPerDay,
 }: {
   initial: DraftState | null;
   entryCoins: number;
   rewards: Record<string, { coins: number; packs: string[] }>;
   coins: number;
   credits: PackCredit[];
+  runsToday: number;
+  maxRunsPerDay: number;
 }) {
   const router = useRouter();
   const [state, setState] = useState<DraftState | null>(initial);
+  // router.refresh() trae "initial" actualizado del servidor, pero
+  // useState solo lo toma la primera vez que se monta el componente.
+  // Sin esto, había que salir y volver a entrar para ver los cambios.
+  useEffect(() => {
+    setState(initial);
+  }, [initial]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -124,34 +132,12 @@ export function DraftView({
         {credits.length > 0 && (
           <div className="space-y-2 rounded-2xl border border-trophy/40 bg-trophy-soft/20 p-3">
             <p className="flex items-center gap-1.5 text-sm font-bold text-trophy">
-              <Package size={15} /> Sobres ganados
+              <Package size={15} /> Tenés {credits.length} sobre
+              {credits.length > 1 ? "s" : ""} ganado{credits.length > 1 ? "s" : ""}
             </p>
-            {credits.map((c) => (
-              <div
-                key={c.id}
-                className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2"
-              >
-                <Sparkles size={15} className="text-trophy" />
-                <span className="flex-1 text-sm font-semibold">
-                  {c.pack_name}
-                </span>
-                <Button
-                  size="sm"
-                  disabled={pending}
-                  onClick={() => {
-                    setBusy(`pack${c.id}`);
-                    start(async () => {
-                      const res = await redeemPack(c.id);
-                      setBusy(null);
-                      if (res.ok) router.push("/packs");
-                      else setError(res.error);
-                    });
-                  }}
-                >
-                  {busy === `pack${c.id}` ? "…" : "Abrir"}
-                </Button>
-              </div>
-            ))}
+            <Button fullWidth size="sm" onClick={() => router.push("/packs")}>
+              Ir a la Tienda para abrirlo{credits.length > 1 ? "s" : ""}
+            </Button>
           </div>
         )}
 
@@ -178,18 +164,23 @@ export function DraftView({
                 {entryCoins.toLocaleString("es")}
               </span>
             </div>
+            <p className="text-center text-xs text-muted">
+              Drafts jugados hoy: {runsToday}/{maxRunsPerDay}
+            </p>
             <Button
               fullWidth
               size="lg"
-              disabled={pending || coins < entryCoins}
+              disabled={pending || coins < entryCoins || runsToday >= maxRunsPerDay}
               onClick={begin}
             >
               <Shuffle size={17} />
-              {coins < entryCoins
-                ? "Saldo insuficiente"
-                : busy === "start"
-                  ? "Empezando…"
-                  : "Entrar al draft"}
+              {runsToday >= maxRunsPerDay
+                ? "Ya jugaste 3 hoy"
+                : coins < entryCoins
+                  ? "Saldo insuficiente"
+                  : busy === "start"
+                    ? "Empezando…"
+                    : "Entrar al draft"}
             </Button>
           </CardBody>
         </Card>

@@ -50,6 +50,41 @@ export async function openPack(
   return { ok: true, cards };
 }
 
+export async function openDraftCreditPack(
+  creditId: number
+): Promise<
+  { ok: true; cards: PulledCard[] } | { ok: false; error: string }
+> {
+  const supabase = createClient();
+  const idem = `draft-${creditId}-${Date.now()}`;
+  const { data, error } = await supabase.rpc("redeem_draft_pack", {
+    p_credit_id: creditId,
+    p_idem: idem,
+  });
+
+  if (error) {
+    const raw = error.message ?? "";
+    const msg = raw.toLowerCase();
+    if (msg.includes("ya fue canjeado")) {
+      return { ok: false, error: "Ese sobre ya fue abierto." };
+    }
+    if (msg.includes("could not find") || msg.includes("does not exist")) {
+      return {
+        ok: false,
+        error: "Falta ejecutar la migración 0024_draft_mode.sql.",
+      };
+    }
+    return { ok: false, error: `No se pudo abrir el sobre: ${raw}` };
+  }
+
+  const cards = ((data as any)?.cards ?? []) as PulledCard[];
+  revalidatePath("/packs");
+  revalidatePath("/draft");
+  revalidatePath("/club");
+  revalidatePath("/squad");
+  return { ok: true, cards };
+}
+
 export async function claimWelcome(): Promise<{
   ok: boolean;
   granted?: number;
