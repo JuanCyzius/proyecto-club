@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Flag } from "@/components/ui/flag";
 import { Portrait } from "@/components/player-card/portrait";
 import { Check, X } from "lucide-react";
@@ -199,7 +199,7 @@ export function SquadBuilder({
     markDirty();
   }
 
-  function onSave() {
+  const onSave = useCallback(() => {
     setError(null);
     start(async () => {
       const res = await saveSquad(formation, tactics, slots);
@@ -210,7 +210,20 @@ export function SquadBuilder({
         setError(res.error ?? "No se pudo guardar.");
       }
     });
-  }
+  }, [formation, tactics, slots]);
+
+  /**
+   * Guardado automático. Espera 800 ms tras el último cambio para no
+   * escribir en cada toque: si movés tres jugadores seguidos, se guarda
+   * una sola vez. El botón manual sigue existiendo por si falló algo.
+   */
+  const autosave = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => {
+    if (!dirty) return;
+    clearTimeout(autosave.current);
+    autosave.current = setTimeout(() => onSave(), 800);
+    return () => clearTimeout(autosave.current);
+  }, [dirty, onSave]);
 
   // Candidatos para el picker actual.
   const pickerCandidates = useMemo(() => {
@@ -494,15 +507,23 @@ export function SquadBuilder({
               <span className="inline-flex items-center gap-1 text-turf">
                 <Check size={14} /> Plantilla guardada
               </span>
-            ) : dirty ? (
-              "Cambios sin guardar"
+            ) : pending || dirty ? (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-trophy" />
+                Guardando…
+              </span>
             ) : (
-              "Todo al día"
+              <span className="inline-flex items-center gap-1 text-muted">
+                <Check size={13} /> Todo al día
+              </span>
             )}
           </p>
-          <Button onClick={onSave} disabled={pending || !dirty}>
-            {pending ? "Guardando…" : "Guardar"}
-          </Button>
+          {/* El guardado es automático; el botón queda solo por si falla */}
+          {error && (
+            <Button size="sm" variant="secondary" onClick={onSave} disabled={pending}>
+              Reintentar
+            </Button>
+          )}
         </div>
       </div>
 
@@ -698,8 +719,12 @@ function PitchPlayer({
           </span>
         )}
 
-        {/* Bandera */}
-        <Flag nation={card.nationality} size={12} />
+        {/* Bandera, anclada al borde del rostro */}
+        <Flag
+          nation={card.nationality}
+          className="absolute -bottom-[0.15em] -right-[0.35em] ring-1 ring-bg"
+          style={{ width: "4.2cqw", height: "4.2cqw", minWidth: 13, minHeight: 13 }}
+        />
       </div>
 
       {/* Nombre y escudo, juntos y legibles */}
@@ -712,7 +737,7 @@ function PitchPlayer({
           size={13}
           showFallback={false}
           className="shrink-0"
-          style={{ width: "3.4cqw", height: "3.4cqw" }}
+          style={{ width: "3.6cqw", height: "3.6cqw", minWidth: 11, minHeight: 11 }}
         />
         <span className="truncate font-bold leading-tight text-text">
           {shortName(card.name)}

@@ -36,6 +36,8 @@ type Props = {
   initialDecision: Decision | null;
   initialFinished: boolean;
   initialReward: number | null;
+  /** Vuelve al listado de rivales sin recargar la página. */
+  onExit?: () => void;
 };
 
 const TONE_STYLE: Record<string, string> = {
@@ -60,6 +62,7 @@ export function LiveMatch({
   initialDecision,
   initialFinished,
   initialReward,
+  onExit,
 }: Props) {
   const router = useRouter();
   const [events, setEvents] = useState<MatchEvent[]>([]);
@@ -296,7 +299,11 @@ export function LiveMatch({
 
         {finished && (
           <div className="space-y-2 p-3">
-            <Button fullWidth size="lg" onClick={() => router.push("/play")}>
+            <Button
+              fullWidth
+              size="lg"
+              onClick={() => (onExit ? onExit() : router.push("/play"))}
+            >
               <Swords size={17} /> Jugar otro partido
             </Button>
             <button

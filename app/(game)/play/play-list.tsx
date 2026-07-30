@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Notice } from "@/components/ui/layout";
 import { Swords, Zap, Dices, Coins, Shuffle, ChevronRight, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,7 @@ function tierStyle(max: number) {
 }
 
 export function TierList({ tiers }: { tiers: Tier[] }) {
+  const router = useRouter();
   const [pending, start] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +61,12 @@ export function TierList({ tiers }: { tiers: Tier[] }) {
         initialDecision={live.decision}
         initialFinished={live.finished}
         initialReward={live.reward ?? null}
+        onExit={() => {
+          // Volver al listado y traer el saldo y la energía actualizados
+          setLive(null);
+          setBusy(null);
+          router.refresh();
+        }}
       />
     );
   }

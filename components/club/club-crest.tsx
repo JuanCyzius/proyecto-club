@@ -2,18 +2,11 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import CLUB_LOGOS from "@/lib/club-logos.json";
+import { clubLogo } from "@/lib/club-logos";
 
-const LOGOS = CLUB_LOGOS as Record<string, string>;
-
-export function clubLogo(clubName?: string | null): string | null {
-  if (!clubName) return null;
-  return LOGOS[clubName.trim()] ?? null;
-}
-
-export function hasClubLogo(clubName?: string | null): boolean {
-  return clubLogo(clubName) !== null;
-}
+// Se reexporta por comodidad para los componentes de cliente. Los de
+// servidor deben importarla desde "@/lib/club-logos".
+export { clubLogo, hasClubLogo } from "@/lib/club-logos";
 
 /**
  * Escudo de club. Los archivos ya vienen normalizados a un lienzo

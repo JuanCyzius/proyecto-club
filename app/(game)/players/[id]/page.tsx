@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { PlayerCard } from "@/components/player-card/player-card";
-import { ClubCrest, clubLogo } from "@/components/club/club-crest";
+import { ClubCrest } from "@/components/club/club-crest";
+import { clubLogo } from "@/lib/club-logos";
 import { Card, CardBody } from "@/components/ui/card";
 import {
   ATTR_KEYS,
