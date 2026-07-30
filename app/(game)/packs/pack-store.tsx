@@ -197,7 +197,7 @@ export function PackStore({
       {tab === "packs" && credits.length > 0 && (
         <div className="space-y-2 rounded-2xl border border-trophy/40 bg-trophy-soft/20 p-3">
           <p className="flex items-center gap-1.5 text-sm font-bold text-trophy">
-            <Trophy size={15} /> Ganados en el Draft
+            <Trophy size={15} /> Sobres ganados (Draft y Desafíos)
           </p>
           {credits.map((c) => (
             <div

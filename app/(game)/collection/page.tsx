@@ -13,8 +13,9 @@ export default async function CollectionPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: cardRows }, { data: slotRows }, { data: profile }] =
+  const [{ data: credits }, { data: cardRows }, { data: slotRows }, { data: profile }] =
     await Promise.all([
+      supabase.rpc("my_draft_credits"),
       supabase
         .from("player_cards")
         .select(
@@ -78,6 +79,12 @@ export default async function CollectionPage() {
         cards={cards}
         coins={profile?.coins ?? 0}
         inventory={inventory}
+        packCredits={
+          ((credits ?? []) as { id: number; pack_name: string }[]).map((c) => ({
+            id: c.id,
+            name: c.pack_name,
+          }))
+        }
       />
     </div>
   );

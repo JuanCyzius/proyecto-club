@@ -41,10 +41,12 @@ export function CollectionList({
   cards,
   coins,
   inventory,
+  packCredits,
 }: {
   cards: CollectionCard[];
   coins: number;
   inventory: InventoryItem[];
+  packCredits: { id: number; name: string }[];
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<"players" | "items">("players");
@@ -190,6 +192,24 @@ export function CollectionList({
 
       {tab === "items" ? (
         <div className="space-y-3">
+          {packCredits.length > 0 && (
+            <div className="space-y-1.5 rounded-2xl border border-trophy/35 bg-trophy-soft/15 p-3">
+              <p className="text-xs font-bold text-trophy">
+                Sobres ganados sin abrir ({packCredits.length})
+              </p>
+              {packCredits.map((c) => (
+                <p key={c.id} className="text-sm font-semibold">
+                  {c.name}
+                </p>
+              ))}
+              <button
+                onClick={() => router.push("/packs")}
+                className="w-full rounded-lg border border-trophy/50 bg-trophy/15 py-1.5 text-xs font-bold text-trophy"
+              >
+                Abrir gratis en la Tienda
+              </button>
+            </div>
+          )}
           {inventory.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted">
               No tenés ítems. Salen en los sobres o se compran en la tienda.
