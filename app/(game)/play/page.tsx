@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getTiers } from "@/lib/supabase/catalog";
 import { TierList, type Tier } from "./play-list";
 import { PageHeader } from "@/components/ui/layout";
 
@@ -22,10 +23,8 @@ export default async function PlayPage() {
         .maybeSingle()
     : { data: null };
 
-  const { data: tiers } = await supabase
-    .from("difficulty_tiers")
-    .select("code, name, subtitle, min_rating, max_rating, reward_mult")
-    .order("sort", { ascending: true });
+  // Niveles de dificultad: iguales para todos, se leen del caché
+  const tiers = await getTiers();
 
   return (
     <div className="space-y-4">
@@ -35,7 +34,7 @@ export default async function PlayPage() {
         subtitle="El rival se sortea al azar dentro del nivel que elijas."
       />
       <TierList
-        tiers={(tiers ?? []) as Tier[]}
+        tiers={tiers as Tier[]}
         ongoing={
           live
             ? {

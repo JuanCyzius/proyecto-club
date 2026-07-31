@@ -4,11 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Notice } from "@/components/ui/layout";
+import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import { fetchChat, sendChat, markChatRead, type ChatMsg } from "./actions";
-
-/** Sondeo escalonado: rápido si hay charla, lento si está quieto. */
-const MIN_DELAY = 6_000;
-const MAX_DELAY = 60_000;
 
 function hhmm(iso: string) {
   const d = new Date(iso);
@@ -35,29 +32,18 @@ export function ChatView({ initial }: { initial: ChatMsg[] }) {
     };
   }, []);
 
-  // Sondeo del chat, escalonado para no castigar al servidor:
-  //   - arranca cada 6 s mientras hay conversación;
-  //   - si no llega nada nuevo, el intervalo se va estirando hasta 60 s;
-  //   - vuelve a 6 s en cuanto aparece un mensaje o el usuario escribe;
-  //   - se detiene del todo con la pestaña oculta (antes seguía el
-  //     temporizador aunque descartara la respuesta).
-  // Además "marcar leído" ya no viaja en cada ciclo: solo cuando de
-  // verdad hubo mensajes nuevos.
-  const delay = useRef(MIN_DELAY);
+  // El chat llega por WebSocket (Supabase Realtime): el navegador
+  // mantiene una conexión abierta y el servidor avisa cuando entra un
+  // mensaje. Con el chat quieto no se hace NINGUNA solicitud; antes se
+  // preguntaba cada 6-60 segundos aunque no pasara nada.
+  //
+  // Se conserva una red de seguridad cada 5 minutos por si la conexión
+  // se cae sin avisar (túnel, cambio de red, suspensión del teléfono).
   useEffect(() => {
     let alive = true;
-    let timer: ReturnType<typeof setTimeout>;
 
-    const schedule = () => {
-      timer = setTimeout(run, delay.current);
-    };
-
-    const run = async () => {
-      if (!alive) return;
-      if (document.visibilityState !== "visible") {
-        schedule();
-        return;
-      }
+    const pull = async () => {
+      if (!alive || document.visibilityState !== "visible") return;
       const list = await fetchChat();
       if (!alive) return;
       const newest = list[list.length - 1]?.id ?? 0;
@@ -66,24 +52,36 @@ export function ChatView({ initial }: { initial: ChatMsg[] }) {
         setMsgs(list);
         markChatRead();
         window.dispatchEvent(new Event("chat:read"));
-        delay.current = MIN_DELAY; // hay charla: volvemos a mirar seguido
-      } else {
-        delay.current = Math.min(MAX_DELAY, Math.round(delay.current * 1.6));
       }
-      schedule();
     };
 
-    // Al volver a la pestaña, mirar enseguida
+    const supabase = createBrowserClient();
+    const channel = supabase
+      .channel("chat-global")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "chat_messages" },
+        () => {
+          // Llegó un mensaje: se traen los últimos (una sola solicitud,
+          // y solo cuando de verdad hay algo nuevo).
+          pull();
+        }
+      )
+      .subscribe();
+
+    // Al volver a la pestaña, sincronizar por si se perdió algo
     const onVis = () => {
-      if (document.visibilityState === "visible") delay.current = MIN_DELAY;
+      if (document.visibilityState === "visible") pull();
     };
     document.addEventListener("visibilitychange", onVis);
 
-    schedule();
+    const safety = setInterval(pull, 300_000);
+
     return () => {
       alive = false;
-      clearTimeout(timer);
+      clearInterval(safety);
       document.removeEventListener("visibilitychange", onVis);
+      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -104,7 +102,6 @@ export function ChatView({ initial }: { initial: ChatMsg[] }) {
       return;
     }
     setText("");
-    delay.current = MIN_DELAY;
     const list = await fetchChat();
     lastId.current = list[list.length - 1]?.id ?? 0;
     setMsgs(list);

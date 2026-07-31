@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getPacks, getShopItems } from "@/lib/supabase/catalog";
 import { PackStore, type ShopItem } from "./pack-store";
 import { PageHeader } from "@/components/ui/layout";
 
@@ -12,19 +13,13 @@ export default async function PacksPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: packs }, { data: profile }, { data: shopItems }, { data: draftCredits }] =
+  // El catálogo (sobres e ítems) sale del caché: es igual para todos.
+  // Solo las monedas y los sobres ganados se leen frescos.
+  const [packs, shopItems, { data: profile }, { data: draftCredits }] =
     await Promise.all([
-      supabase
-        .from("packs")
-        .select("id, code, name, description, price_coins, drop_table")
-        .eq("active", true)
-        .order("sort", { ascending: true }),
+      getPacks(),
+      getShopItems(),
       supabase.from("profiles").select("coins").eq("id", user.id).maybeSingle(),
-      supabase
-        .from("items")
-        .select("code, name, description, kind, power, price_coins, rarity")
-        .eq("active", true)
-        .order("sort", { ascending: true }),
       supabase.rpc("my_draft_credits"),
     ]);
 
@@ -36,9 +31,9 @@ export default async function PacksPage() {
         subtitle="Las probabilidades son públicas. El resultado lo decide el servidor."
       />
       <PackStore
-        packs={packs ?? []}
+        packs={packs as never}
         coins={profile?.coins ?? 0}
-        items={(shopItems ?? []) as ShopItem[]}
+        items={shopItems as unknown as ShopItem[]}
         draftCredits={
           (draftCredits ?? []) as {
             id: number;
