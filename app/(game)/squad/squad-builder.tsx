@@ -345,7 +345,7 @@ export function SquadBuilder({
 
       {/* Campo */}
       <div
-        className="relative aspect-[5/7] w-full overflow-hidden rounded-2xl border border-border"
+        className="relative aspect-[5/8] w-full overflow-hidden rounded-2xl border border-border"
         style={{ containerType: "inline-size" }}
       >
         <Pitch />
@@ -361,7 +361,7 @@ export function SquadBuilder({
                 left: `${Math.min(90, Math.max(10, s.x))}%`,
                 // El centro se limita para que la carta entera entre en el campo:
                 // el arquero (y=93) quedaba con las estadísticas cortadas abajo.
-                top: `${Math.min(88, Math.max(12, s.y))}%`,
+                top: `${Math.min(92, Math.max(8, s.y))}%`,
               }}
               className="absolute -translate-x-1/2 -translate-y-1/2"
             >
@@ -862,8 +862,8 @@ function PitchPlayer({
     <div
       className="overflow-hidden rounded-lg bg-bg/90 backdrop-blur"
       style={{
-        width: "15.8cqw",
-        maxWidth: "90px",
+        width: "17cqw",
+        maxWidth: "97px",
         boxShadow: injured
           ? "0 0 0 1.5px #ef4444, 0 0 8px 1px rgba(239,68,68,0.55)"
           : `0 0 0 1.5px ${aura.ring}, 0 0 8px 1px ${aura.glow}`,
@@ -874,13 +874,13 @@ function PitchPlayer({
         <span className="flex flex-col items-center leading-none">
           <span
             className="font-display font-extrabold text-text"
-            style={{ fontSize: "3.25cqw" }}
+            style={{ fontSize: "3.5cqw" }}
           >
             {card.overall}
           </span>
           <span
             className={cn("font-bold leading-none", FIT_RING[fit].split(" ")[1])}
-            style={{ fontSize: "1.9cqw" }}
+            style={{ fontSize: "2.05cqw" }}
           >
             {slotPos}
             {fit === "none" ? "!" : ""}
@@ -890,7 +890,7 @@ function PitchPlayer({
           <Portrait
             name={card.name}
             className="rounded-full"
-            style={{ width: "5.4cqw", height: "5.4cqw", minWidth: 18, minHeight: 18 }}
+            style={{ width: "5.8cqw", height: "5.8cqw", minWidth: 19, minHeight: 19 }}
           />
           {injured && (
             <HeartPulse
@@ -909,7 +909,7 @@ function PitchPlayer({
       {/* Nombre + escudo */}
       <div
         className="flex items-center justify-center gap-[0.25em] px-[0.25em] leading-tight"
-        style={{ fontSize: "2.25cqw" }}
+        style={{ fontSize: "2.4cqw" }}
       >
         <ClubCrest
           club={card.clubName}
@@ -925,7 +925,7 @@ function PitchPlayer({
       {card.leagueName && (
         <p
           className="truncate px-[0.3em] text-center leading-tight text-muted"
-          style={{ fontSize: "1.8cqw" }}
+          style={{ fontSize: "1.95cqw" }}
         >
           {shortLeague(card.leagueName)}
         </p>
@@ -934,7 +934,7 @@ function PitchPlayer({
       {/* Las 6 estadísticas, estilo carta FIFA */}
       <div
         className="mx-[0.3em] mt-[0.15em] grid grid-cols-2 gap-x-[0.5em] border-t border-white/10 pt-[0.15em] leading-[1.35]"
-        style={{ fontSize: "1.9cqw" }}
+        style={{ fontSize: "2.05cqw" }}
       >
         {stats.map(([k, v]) => (
           <span key={k} className="flex items-center justify-between gap-[0.2em] overflow-hidden">
