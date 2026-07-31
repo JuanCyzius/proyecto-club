@@ -829,98 +829,121 @@ function PitchPlayer({
   const injured = (card.injuryMatches ?? 0) > 0;
   const aura = RARITY_AURA[card.rarity] ?? RARITY_AURA.common;
 
-  // Todo se dimensiona en % del ancho del campo (cqw): las fichas crecen
-  // en pantallas grandes sin solaparse en las chicas. El hueco más
-  // ajustado de la formación es del 24%, así que la ficha ocupa 21%.
+  // Carta compacta estilo FIFA: recuadro con borde del color de la
+  // rareza y TODO adentro (media, retrato, bandera, nombre, liga, las
+  // 6 estadísticas, química y energía). Se dimensiona en % del ancho
+  // del campo (cqw) para no solaparse en ninguna pantalla.
+  const a = card.attributes as unknown as Record<string, number>;
+  const gk = card.position === "GK" && card.gkAttributes;
+  const stats: [string, number][] = gk
+    ? [
+        ["ATJ", card.gkAttributes?.diving ?? 0],
+        ["MAN", card.gkAttributes?.handling ?? 0],
+        ["SAQ", card.gkAttributes?.kicking ?? 0],
+        ["POS", card.gkAttributes?.positioning ?? 0],
+        ["REF", card.gkAttributes?.reflexes ?? 0],
+        ["VEL", card.gkAttributes?.speed ?? 0],
+      ]
+    : [
+        ["VEL", a?.pace ?? 0],
+        ["TIR", a?.shooting ?? 0],
+        ["PAS", a?.passing ?? 0],
+        ["REG", a?.dribbling ?? 0],
+        ["DEF", a?.defending ?? 0],
+        ["FIS", a?.physical ?? 0],
+      ];
+
   return (
     <div
-      className="flex flex-col items-center"
-      style={{ width: "15.2cqw", maxWidth: "85px" }}
+      className="overflow-hidden rounded-lg bg-bg/90 backdrop-blur"
+      style={{
+        width: "15cqw",
+        maxWidth: "84px",
+        boxShadow: injured
+          ? "0 0 0 1.5px #ef4444, 0 0 8px 1px rgba(239,68,68,0.55)"
+          : `0 0 0 1.5px ${aura.ring}, 0 0 8px 1px ${aura.glow}`,
+      }}
     >
-      {/* Rostro con aura del color de la rareza */}
-      <div
-        className="relative rounded-full bg-bg/90 backdrop-blur"
-        style={{
-          width: "10cqw",
-          height: "10cqw",
-          maxWidth: "55px",
-          maxHeight: "55px",
-          boxShadow: injured
-            ? "0 0 0 2px #ef4444, 0 0 10px 2px rgba(239,68,68,0.6)"
-            : `0 0 0 2px ${aura.ring}, 0 0 10px 2px ${aura.glow}`,
-        }}
-      >
-        <Portrait name={card.name} className="h-full w-full rounded-full" />
-        {injured && (
+      {/* Cabecera: media + puesto | retrato | bandera */}
+      <div className="flex items-center justify-between px-[0.3em] pt-[0.15em]">
+        <span className="flex flex-col items-center leading-none">
           <span
-            className="absolute -left-[0.25em] -top-[0.25em] flex items-center justify-center rounded-full bg-danger text-bg ring-2 ring-bg"
-            style={{ width: "3.6cqw", height: "3.6cqw", minWidth: 13, minHeight: 13 }}
-            title={`Lesionado: ${card.injuryMatches} partido${(card.injuryMatches ?? 0) > 1 ? "s" : ""} de baja`}
+            className="font-display font-extrabold text-text"
+            style={{ fontSize: "3.4cqw" }}
           >
-            <HeartPulse style={{ width: "70%", height: "70%" }} />
+            {card.overall}
           </span>
-        )}
-        {/* Media */}
-        <span
-          className="absolute -left-[0.4em] -top-[0.3em] rounded-md bg-bg px-[0.35em] font-display font-extrabold leading-tight text-text ring-1 ring-border"
-          style={{ fontSize: "3.7cqw" }}
-        >
-          {card.overall}
+          <span
+            className={cn("font-bold leading-none", FIT_RING[fit].split(" ")[1])}
+            style={{ fontSize: "2cqw" }}
+          >
+            {slotPos}
+            {fit === "none" ? "!" : ""}
+          </span>
         </span>
-        {/* Aviso de jugador fuera de su puesto */}
-        {fit === "none" && (
-          <span
-            className="absolute -right-[0.25em] -top-[0.25em] flex items-center justify-center rounded-full bg-danger text-bg ring-2 ring-bg"
-            style={{ width: "3.6cqw", height: "3.6cqw", fontSize: "2.4cqw" }}
-            title="Fuera de posición"
-          >
-            !
-          </span>
-        )}
-
-        {/* Bandera, anclada al borde del rostro */}
+        <span className="relative shrink-0">
+          <Portrait
+            name={card.name}
+            className="rounded-full"
+            style={{ width: "5.6cqw", height: "5.6cqw", minWidth: 18, minHeight: 18 }}
+          />
+          {injured && (
+            <HeartPulse
+              className="absolute -right-1 -top-1 rounded-full bg-danger p-[1px] text-bg"
+              style={{ width: "2.8cqw", height: "2.8cqw", minWidth: 10, minHeight: 10 }}
+            />
+          )}
+        </span>
         <Flag
           nation={card.nationality}
-          className="absolute -bottom-[0.15em] -right-[0.35em] ring-1 ring-bg"
-          style={{ width: "4.2cqw", height: "4.2cqw", minWidth: 13, minHeight: 13 }}
+          className="shrink-0"
+          style={{ width: "3.3cqw", height: "3.3cqw", minWidth: 11, minHeight: 11 }}
         />
       </div>
 
-      {/* Nombre y escudo, juntos y legibles */}
-      <span
-        className="mt-[0.3em] flex w-full items-center justify-center gap-[0.25em] rounded bg-bg/85 px-[0.3em] py-[0.08em] backdrop-blur"
-        style={{ fontSize: "3.2cqw" }}
+      {/* Nombre + escudo */}
+      <div
+        className="flex items-center justify-center gap-[0.25em] px-[0.25em] leading-tight"
+        style={{ fontSize: "2.6cqw" }}
       >
         <ClubCrest
           club={card.clubName}
-          size={13}
+          size={10}
           showFallback={false}
           className="shrink-0"
-          style={{ width: "3.6cqw", height: "3.6cqw", minWidth: 11, minHeight: 11 }}
+          style={{ width: "2.8cqw", height: "2.8cqw", minWidth: 9, minHeight: 9 }}
         />
-        <span className="truncate font-bold leading-tight text-text">
-          {shortName(card.name)}
-        </span>
-      </span>
+        <span className="truncate font-bold text-text">{shortName(card.name)}</span>
+      </div>
 
-      {/* Liga en la que juega */}
+      {/* Liga */}
       {card.leagueName && (
-        <span
-          className="mt-[0.1em] w-full truncate rounded bg-bg/70 px-[0.25em] text-center leading-tight text-muted backdrop-blur"
-          style={{ fontSize: "2.2cqw" }}
+        <p
+          className="truncate px-[0.3em] text-center leading-tight text-muted"
+          style={{ fontSize: "1.9cqw" }}
         >
           {shortLeague(card.leagueName)}
-        </span>
+        </p>
       )}
 
-      {/* Posición, química y energía en una sola fila */}
-      <span
-        className="mt-[0.2em] flex items-center gap-[0.35em] rounded bg-bg/75 px-[0.35em] backdrop-blur"
-        style={{ fontSize: "3.2cqw" }}
+      {/* Las 6 estadísticas, estilo carta FIFA */}
+      <div
+        className="mx-[0.25em] mt-[0.1em] grid grid-cols-3 gap-x-[0.2em] border-t border-white/10 px-[0.1em] pt-[0.1em] text-center leading-tight"
+        style={{ fontSize: "1.9cqw" }}
       >
-        <span className={cn("font-bold", FIT_RING[fit].split(" ")[1])}>
-          {slotPos}
-        </span>
+        {stats.map(([k, v]) => (
+          <span key={k} className="whitespace-nowrap tabular-nums">
+            <span className="text-muted">{k}</span>{" "}
+            <b className="text-text">{v}</b>
+          </span>
+        ))}
+      </div>
+
+      {/* Química + energía */}
+      <div
+        className="flex items-center justify-center gap-[0.4em] pb-[0.2em] pt-[0.1em]"
+        style={{ fontSize: "2.2cqw" }}
+      >
         <span className="flex gap-[1px]">
           {Array.from({ length: 5 }).map((_, i) => (
             <span
@@ -929,7 +952,7 @@ function PitchPlayer({
                 "rounded-full",
                 i < chemDots ? tier.ring.replace("ring-", "bg-") : "bg-white/25"
               )}
-              style={{ width: "0.9cqw", height: "0.9cqw", minWidth: 3, minHeight: 3 }}
+              style={{ width: "0.85cqw", height: "0.85cqw", minWidth: 3, minHeight: 3 }}
             />
           ))}
         </span>
@@ -941,8 +964,7 @@ function PitchPlayer({
         >
           {Math.round(stamina)}
         </span>
-      </span>
-
+      </div>
     </div>
   );
 }
