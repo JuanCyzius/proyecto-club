@@ -67,6 +67,9 @@ export function ChatView({ initial }: { initial: ChatMsg[] }) {
       {error && <Notice tone="error">{error}</Notice>}
 
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto rounded-2xl border border-border bg-surface p-3 [-webkit-overflow-scrolling:touch]">
+        <p className="pb-1 text-center text-[10px] text-muted">
+          Se guardan los últimos 100 mensajes de las últimas 24 horas.
+        </p>
         {msgs.length === 0 && (
           <p className="py-8 text-center text-sm text-muted">
             Nadie escribió todavía. Rompé el hielo.
