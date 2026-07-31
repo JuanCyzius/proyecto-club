@@ -155,6 +155,19 @@ export async function buildHomeTeam(
     picked.push({ slotPos: slot.pos, c });
   }
 
+  // No se puede repetir al mismo futbolista, ni con otra versión de
+  // su carta (la validación del cliente se puede saltear).
+  const seen = new Map<string, string>();
+  for (const { c } of picked) {
+    const key = c.name.trim().toLowerCase();
+    if (seen.has(key)) {
+      return {
+        error: `Tenés a ${c.name} repetido en el once. Solo puede jugar una versión de cada futbolista.`,
+      };
+    }
+    seen.set(key, c.id);
+  }
+
   // Química real del once: afecta los atributos de cada jugador
   const chemSquad: ChemPlayer[] = picked.map(({ slotPos, c }) => ({
     cardPos: c.position,

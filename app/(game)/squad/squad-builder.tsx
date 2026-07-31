@@ -57,6 +57,11 @@ const FIT_RING: Record<Fit, string> = {
   group: "ring-muted text-muted",
   none: "ring-danger text-danger",
 };
+/** Identifica al futbolista más allá de la versión de la carta. */
+function playerKey(name: string): string {
+  return name.trim().toLowerCase();
+}
+
 const FIT_RANK: Record<Fit, number> = { exact: 0, compatible: 1, group: 2, none: 3 };
 
 export function SquadBuilder({
@@ -226,10 +231,16 @@ export function SquadBuilder({
     setSlots((prev) => {
       const next = { ...prev };
       if (cardId) {
-        // El mismo jugador no puede ocupar dos huecos: si venía de la
-        // banca (o de otro puesto), se lo saca de ahí automáticamente.
+        // El mismo futbolista no puede ocupar dos huecos. Se saca no
+        // solo la misma carta, sino cualquier OTRA versión suya (con
+        // mejor o peor media), que es igual de repetida.
+        const key = playerKey(cardById.get(cardId)?.name ?? "");
         for (const [k, v] of Object.entries(next)) {
-          if (k !== slot && v === cardId) delete next[k];
+          if (k === slot || !v) continue;
+          const other = cardById.get(v);
+          if (v === cardId || (other && playerKey(other.name) === key)) {
+            delete next[k];
+          }
         }
         next[slot] = cardId;
       } else delete next[slot];
@@ -329,9 +340,19 @@ export function SquadBuilder({
         if (id) taken.delete(id);
       }
     }
+    // Nombres ya usados en el equipo: no se puede repetir al mismo
+    // futbolista, ni siquiera con otra versión (mejor o peor).
+    const usedNames = new Set<string>();
+    for (const [slotCode, cardId] of Object.entries(slots)) {
+      if (slotCode === picker.slot || !cardId) continue;
+      const used = cardById.get(cardId);
+      if (used) usedNames.add(playerKey(used.name));
+    }
+
     const list = cards.filter(
       (c) =>
         !taken.has(c.id) &&
+        !usedNames.has(playerKey(c.name)) &&
         (!fLeague || c.leagueName === fLeague) &&
         (!fNation || c.nationality === fNation) &&
         c.overall >= fMinOv
@@ -346,7 +367,7 @@ export function SquadBuilder({
     }
     return [...list].sort((a, b) => b.overall - a.overall);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picker, cards, slots, fLeague, fNation, fMinOv]);
+  }, [picker, cards, slots, cardById, fLeague, fNation, fMinOv]);
 
   return (
     <div className="space-y-4 pb-24">
