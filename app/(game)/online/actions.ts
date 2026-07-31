@@ -49,12 +49,27 @@ export async function onlineCount(): Promise<number> {
  * latido de presencia en la misma llamada. Si la migración 0036 no
  * corrió todavía, cae al conteo viejo sin romper nada.
  */
-export async function navCounts(): Promise<{ online: number; invites: number; chat: number }> {
+export async function navCounts(): Promise<{
+  online: number;
+  invites: number;
+  chat: number;
+  live: number;
+}> {
   const supabase = createClient();
   const { data, error } = await supabase.rpc("nav_counts");
   if (error) {
-    return { online: await onlineCount(), invites: 0, chat: 0 };
+    return { online: await onlineCount(), invites: 0, chat: 0, live: 0 };
   }
-  const d = data as { online?: number; invites?: number; chat?: number } | null;
-  return { online: d?.online ?? 0, invites: d?.invites ?? 0, chat: d?.chat ?? 0 };
+  const d = data as {
+    online?: number;
+    invites?: number;
+    chat?: number;
+    live?: number;
+  } | null;
+  return {
+    online: d?.online ?? 0,
+    invites: d?.invites ?? 0,
+    chat: d?.chat ?? 0,
+    live: d?.live ?? 0,
+  };
 }

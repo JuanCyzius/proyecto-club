@@ -159,7 +159,7 @@ export function SquadBuilder({
   // Todo lo derivado se calcula una sola vez por cambio real de plantilla.
   // La química es O(n²), así que sin esto se recalcularía al escribir
   // en el buscador o al abrir un panel.
-  const { starters, rating, chemSquad, chem, chemBySlot, reserveCards } =
+  const { starters, rating, chemSquad, chem, chemBySlot } =
     useMemo(() => {
       const st = starterSlots
         .map((s) => {
@@ -205,9 +205,8 @@ export function SquadBuilder({
         chemSquad: squad,
         chem: total,
         chemBySlot: bySlot,
-        reserveCards: cards.filter((c) => !assigned.has(c.id)),
       };
-    }, [starterSlots, slots, cardById, cards]);
+    }, [starterSlots, slots, cardById]);
 
   const filledCount = starters.length;
 
@@ -639,44 +638,6 @@ export function SquadBuilder({
           })}
         </div>
       </div>
-
-      {/* Reservas */}
-      {reserveCards.length > 0 && (
-        <div>
-          <p className="eyebrow mb-2 px-1">
-            Reserva ({reserveCards.length})
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {reserveCards.map((c) => {
-              const inj = (c.injuryMatches ?? 0) > 0;
-              const st = typeof c.stamina === "number" ? c.stamina : 100;
-              return (
-                <span
-                  key={c.id}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs",
-                    inj ? "border-danger/40 bg-danger/5" : "border-border bg-surface"
-                  )}
-                >
-                  <b className="font-display">{c.overall}</b>
-                  <span className="text-muted">{c.position}</span>
-                  <Flag nation={c.nationality} size={12} />
-                  <span className="text-text/80">{shortName(c.name)}</span>
-                  <span
-                    className={cn(
-                      "tabular-nums text-[10px] font-bold",
-                      st >= 85 ? "text-turf" : st >= 65 ? "text-trophy" : "text-danger"
-                    )}
-                  >
-                    {Math.round(st)}%
-                  </span>
-                  {inj && <HeartPulse size={11} className="text-danger" />}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Táctica */}
       <div>

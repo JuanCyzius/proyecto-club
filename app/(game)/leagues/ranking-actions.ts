@@ -35,7 +35,7 @@ export type DailyWinner = {
 /** Liquida los premios diarios pendientes y trae los ganadores de ayer. */
 export async function dailyTop(): Promise<DailyWinner[]> {
   const supabase = createClient();
-  await supabase.rpc("settle_daily_top");
+  await supabase.rpc("settle_daily_top_throttled");
   const { data } = await supabase.rpc("daily_top_winners");
   return (data ?? []) as DailyWinner[];
 }

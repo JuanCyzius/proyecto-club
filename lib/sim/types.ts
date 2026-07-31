@@ -24,6 +24,8 @@ export type SimTeam = {
   chemistry?: number;
   /** Media del once, para mostrarla antes del partido. */
   avgOverall?: number;
+  /** Club cuyo escudo representa al equipo (el elegido por el usuario). */
+  crestClub?: string | null;
 };
 
 export type Side = "home" | "away";

@@ -6,6 +6,10 @@ import { cn } from "@/lib/utils";
 import { Notice } from "@/components/ui/layout";
 import { fetchChat, sendChat, markChatRead, type ChatMsg } from "./actions";
 
+/** Sondeo escalonado: rápido si hay charla, lento si está quieto. */
+const MIN_DELAY = 6_000;
+const MAX_DELAY = 60_000;
+
 function hhmm(iso: string) {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -19,24 +23,68 @@ export function ChatView({ initial }: { initial: ChatMsg[] }) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastId = useRef(initial[initial.length - 1]?.id ?? 0);
 
-  // Abrir el chat = marcar leído (resetea la burbuja de la barra)
+  // Abrir el chat = marcar leído y apagar la burbuja de la barra al
+  // instante (antes quedaba encendida hasta el siguiente sondeo).
   useEffect(() => {
     markChatRead();
+    window.dispatchEvent(new Event("chat:read"));
+    // También al salir, por si llegaron mensajes mientras leías
+    return () => {
+      markChatRead();
+      window.dispatchEvent(new Event("chat:read"));
+    };
   }, []);
 
-  // Sondeo mientras la pestaña está visible; marca leído al llegar nuevos
+  // Sondeo del chat, escalonado para no castigar al servidor:
+  //   - arranca cada 6 s mientras hay conversación;
+  //   - si no llega nada nuevo, el intervalo se va estirando hasta 60 s;
+  //   - vuelve a 6 s en cuanto aparece un mensaje o el usuario escribe;
+  //   - se detiene del todo con la pestaña oculta (antes seguía el
+  //     temporizador aunque descartara la respuesta).
+  // Además "marcar leído" ya no viaja en cada ciclo: solo cuando de
+  // verdad hubo mensajes nuevos.
+  const delay = useRef(MIN_DELAY);
   useEffect(() => {
-    const id = setInterval(async () => {
-      if (document.visibilityState !== "visible") return;
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const schedule = () => {
+      timer = setTimeout(run, delay.current);
+    };
+
+    const run = async () => {
+      if (!alive) return;
+      if (document.visibilityState !== "visible") {
+        schedule();
+        return;
+      }
       const list = await fetchChat();
+      if (!alive) return;
       const newest = list[list.length - 1]?.id ?? 0;
       if (newest !== lastId.current) {
         lastId.current = newest;
         setMsgs(list);
         markChatRead();
+        window.dispatchEvent(new Event("chat:read"));
+        delay.current = MIN_DELAY; // hay charla: volvemos a mirar seguido
+      } else {
+        delay.current = Math.min(MAX_DELAY, Math.round(delay.current * 1.6));
       }
-    }, 2500);
-    return () => clearInterval(id);
+      schedule();
+    };
+
+    // Al volver a la pestaña, mirar enseguida
+    const onVis = () => {
+      if (document.visibilityState === "visible") delay.current = MIN_DELAY;
+    };
+    document.addEventListener("visibilitychange", onVis);
+
+    schedule();
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, []);
 
   // Auto-scroll al fondo con cada mensaje nuevo
@@ -56,6 +104,7 @@ export function ChatView({ initial }: { initial: ChatMsg[] }) {
       return;
     }
     setText("");
+    delay.current = MIN_DELAY;
     const list = await fetchChat();
     lastId.current = list[list.length - 1]?.id ?? 0;
     setMsgs(list);

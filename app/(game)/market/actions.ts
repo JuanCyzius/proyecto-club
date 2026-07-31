@@ -70,7 +70,7 @@ export async function cancelListing(listingId: string): Promise<MarketResult> {
 
 export async function settleExpired(): Promise<void> {
   const supabase = createClient();
-  await supabase.rpc("settle_expired");
+  await supabase.rpc("settle_expired_throttled");
 }
 
 export type PriceHint = {

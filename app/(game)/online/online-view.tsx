@@ -53,7 +53,7 @@ export function OnlineView({
     const id = setInterval(() => {
       if (document.visibilityState !== "visible") return;
       start(async () => setRows(await getPresence()));
-    }, 45_000);
+    }, 120_000);
     return () => clearInterval(id);
   }, []);
 

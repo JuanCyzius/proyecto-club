@@ -22,6 +22,7 @@ export function BottomNav() {
   const [online, setOnline] = useState<number | null>(null);
   const [invites, setInvites] = useState(0);
   const [chat, setChat] = useState(0);
+  const [live, setLive] = useState(0);
   const [bump, setBump] = useState(false);
 
   // El layout no se desmonta al navegar, así que este intervalo vive una
@@ -33,10 +34,11 @@ export function BottomNav() {
     const tick = async () => {
       if (document.visibilityState !== "visible") return;
       try {
-        const { online: n, invites: inv, chat: ch } = await navCounts();
+        const { online: n, invites: inv, chat: ch, live: lv } = await navCounts();
         if (!alive) return;
         setInvites(inv);
         setChat(ch);
+        setLive(lv);
         setOnline((prev) => {
           if (prev !== null && n !== prev) {
             setBump(true);
@@ -50,7 +52,16 @@ export function BottomNav() {
     };
 
     tick();
-    const id = setInterval(tick, 90_000);
+
+    // Entrar al chat apaga la burbuja al toque: antes había que esperar
+    // al siguiente sondeo (hasta 4 minutos) y parecía no leído.
+    const clearChat = () => setChat(0);
+    window.addEventListener("chat:read", clearChat);
+
+    // El latido de presencia ya viene limitado en el servidor a uno por
+    // minuto: sondear cada 90 s era gastar de más. Con 4 minutos la
+    // ventana de "en línea" (3 min) sigue siendo útil.
+    const id = setInterval(tick, 240_000);
     const onVis = () => {
       if (document.visibilityState === "visible") tick();
     };
@@ -59,6 +70,7 @@ export function BottomNav() {
     return () => {
       alive = false;
       clearInterval(id);
+      window.removeEventListener("chat:read", clearChat);
       document.removeEventListener("visibilitychange", onVis);
     };
   }, []);
@@ -130,6 +142,20 @@ export function BottomNav() {
                     aria-label={`${chat} mensajes sin leer`}
                   >
                     {chat}
+                  </span>
+                )}
+
+                {/* Alguien puso una partida en vivo y busca rival */}
+                {showInvites && invites === 0 && live > 0 && (
+                  <span
+                    className={cn(
+                      "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1",
+                      "bg-sky-400 text-[9px] font-extrabold tabular-nums text-bg",
+                      "ring-2 ring-surface"
+                    )}
+                    aria-label={`${live} partidas buscando rival`}
+                  >
+                    {live}
                   </span>
                 )}
 

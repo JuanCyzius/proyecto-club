@@ -40,13 +40,18 @@ type OwnedRow = {
 };
 
 /**
- * La química rinde en la cancha: un once sin conexiones juega peor.
- * Cada jugador escala sus atributos entre 0.88 (química 0) y 1.00
- * (química 10). Los rivales de la IA juegan siempre al 100%: son
- * compañeros reales del mismo club.
+ * La química define el 30% del rendimiento, de forma gradual:
+ *   química 100 → rinde al 100% (sin castigo)
+ *   química  50 → rinde al  85% (mitad del castigo)
+ *   química   0 → rinde al  70% (castigo completo del 30%)
+ * Se aplica sobre cada atributo del jugador. Los rivales de la IA
+ * son compañeros reales del mismo club: siempre química 100.
+ *
+ * Recibe la química en escala 0-100.
  */
-function chemFactor(chem10: number): number {
-  return 0.88 + 0.012 * Math.max(0, Math.min(10, chem10));
+function chemFactor(chem100: number): number {
+  const c = Math.max(0, Math.min(100, chem100));
+  return 0.7 + 0.3 * (c / 100);
 }
 
 function scaleAttrs(a: Attributes, f: number): Attributes {
@@ -79,7 +84,7 @@ export async function buildHomeTeam(
 ): Promise<{ team: SimTeam } | { error: string }> {
   const { data: profile } = await supabase
     .from("profiles")
-    .select("club_name")
+    .select("club_name, crest_club")
     .eq("id", userId)
     .maybeSingle();
 
@@ -161,7 +166,7 @@ export async function buildHomeTeam(
   const teamChem = teamChemistry(chemSquad);
 
   const starters: SimPlayer[] = picked.map(({ slotPos, c }, i) => {
-    const f = chemFactor(playerChemistry(chemSquad[i], chemSquad).total);
+    const f = chemFactor(playerChemistry(chemSquad[i], chemSquad).total * 10);
     return {
       name: c.name,
       position: c.position,
@@ -179,7 +184,7 @@ export async function buildHomeTeam(
     const cardId = slots.get(b);
     const c = cardId ? cards.get(cardId) : undefined;
     if (c) {
-      const fb = chemFactor(teamChem / 10);
+      const fb = chemFactor(teamChem);
       bench.push({
         name: c.name,
         position: c.position,
@@ -196,6 +201,9 @@ export async function buildHomeTeam(
   return {
     team: {
       name: profile?.club_name ?? "Tu club",
+      // El escudo es el que eligió el usuario, no su nombre de club:
+      // buscar por nombre nunca encontraba nada y salía la inicial.
+      crestClub: profile?.crest_club ?? null,
       starters,
       bench,
       tactics: validTactics((squad?.tactics as Tactics) ?? DEFAULT_TACTICS),
@@ -379,6 +387,7 @@ export async function buildAiTeam(
     starters,
     bench,
     tactics: STYLE_TACTICS[ai.style] ?? DEFAULT_TACTICS,
+    crestClub: ai.real_club ?? ai.name,
     // Los rivales de la IA son compañeros del mismo club: química plena.
     chemistry: 100,
     avgOverall: Math.round(

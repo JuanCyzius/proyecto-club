@@ -69,6 +69,7 @@ export function DuelCardsView({ initialMatchId }: { initialMatchId: string | nul
   const router = useRouter();
   const [matchId, setMatchId] = useState<string | null>(initialMatchId);
   const [state, setState] = useState<DuelState | null>(null);
+  const stateRef = useRef<DuelState | null>(null);
   const [stake, setStake] = useState(0);
   const [codeInput, setCodeInput] = useState("");
   const [selected, setSelected] = useState<number | null>(null);
@@ -84,6 +85,7 @@ export function DuelCardsView({ initialMatchId }: { initialMatchId: string | nul
     const s = await fetchState(matchId);
     if (!s) return;
     setState(s);
+    stateRef.current = s;
     setSecondsLeft(s.seconds_left);
     // Nueva ronda resuelta → mostrar la revelación un momento
     const lastLog = s.rounds[s.rounds.length - 1];
@@ -95,20 +97,58 @@ export function DuelCardsView({ initialMatchId }: { initialMatchId: string | nul
     }
   }, [matchId]);
 
+  // Sondeo adaptativo: solo se consulta seguido cuando de verdad
+  // esperamos algo del rival. Si ya jugamos nuestra carta, el rival
+  // tiene hasta 15 s, así que mirar cada 2 s alcanza; si todavía no
+  // elegimos, el estado no puede cambiar solo y basta con 6 s. Con la
+  // partida terminada o la pestaña oculta, no se consulta nada.
   useEffect(() => {
     if (!matchId) return;
-    refresh();
-    const id = setInterval(() => {
-      if (document.visibilityState === "visible") refresh();
-    }, 1800);
-    return () => clearInterval(id);
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const loop = async () => {
+      if (!alive) return;
+      if (document.visibilityState === "visible") await refresh();
+      if (!alive) return;
+      const st = stateRef.current;
+      const stopped =
+        st && (st.status === "done" || st.status === "cancelled");
+      if (stopped) return;
+      const waitingRival = st?.status === "active" && st.my_pick !== null;
+      const wait =
+        document.visibilityState !== "visible"
+          ? 15_000
+          : st?.status === "waiting"
+            ? 5_000
+            : waitingRival
+              ? 2_000
+              : 6_000;
+      timer = setTimeout(loop, wait);
+    };
+
+    loop();
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
   }, [matchId, refresh]);
 
-  // Reloj local (entre sondeos) + tick del servidor al vencer
+  // Reloj local (entre sondeos) + aviso al servidor cuando vence.
+  //
+  // Antes esto era un bucle: al llegar a 0 se llamaba a tickMatch y a
+  // refresh, y si el servidor devolvía 0 otra vez (porque el rival
+  // todavía no había resuelto), volvía a dispararse sin freno. Ahora
+  // se avisa UNA sola vez por ronda.
+  const tickedRound = useRef(-1);
   useEffect(() => {
     if (secondsLeft === null || !matchId) return;
     if (secondsLeft <= 0) {
-      tickMatch(matchId).then(refresh);
+      const round = stateRef.current?.round ?? -1;
+      if (tickedRound.current !== round) {
+        tickedRound.current = round;
+        tickMatch(matchId).then(refresh);
+      }
       return;
     }
     const t = setTimeout(() => setSecondsLeft((s) => (s === null ? null : s - 1)), 1000);

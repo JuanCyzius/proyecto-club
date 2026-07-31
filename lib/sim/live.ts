@@ -48,6 +48,12 @@ export type LiveTeam = {
   name: string;
   onPitch: LivePlayer[];
   bench: LivePlayer[];
+  /** Química del once (0-100). La IA juega siempre a 100. */
+  chemistry?: number;
+  /** Media del once al empezar. */
+  avgOverall?: number;
+  /** Club cuyo escudo se muestra (el elegido por el usuario). */
+  crestClub?: string | null;
   tactics: SimTeam["tactics"];
   subsLeft: number;
   stats: TeamStats;
@@ -155,6 +161,9 @@ function emptyStats(): TeamStats {
 function toLiveTeam(t: SimTeam): LiveTeam {
   return {
     name: t.name,
+    chemistry: t.chemistry,
+    avgOverall: t.avgOverall,
+    crestClub: t.crestClub ?? null,
     onPitch: t.starters.map(toLive),
     bench: t.bench.map(toLive),
     tactics: t.tactics,
@@ -1124,6 +1133,9 @@ export function finalResult(s: LiveState) {
 export function publicView(s: LiveState) {
   const team = (t: LiveTeam) => ({
     name: t.name,
+    chemistry: t.chemistry ?? null,
+    avgOverall: t.avgOverall ?? null,
+    crestClub: t.crestClub ?? null,
     subsLeft: t.subsLeft,
     onPitch: t.onPitch.map((p) => ({
       name: p.name,

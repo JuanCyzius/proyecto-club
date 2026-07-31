@@ -262,7 +262,7 @@ export function LiveMatch({
         )}
       >
         <div className="flex items-center justify-between gap-2 p-4 pb-3">
-          <TeamSide name={view.home.name} avg={avgOf(view.home)} align="left" />
+          <TeamSide side={view.home} align="left" />
           <div className="text-center">
             <div
               className={cn(
@@ -283,7 +283,7 @@ export function LiveMatch({
               {finished ? "FINAL" : `${shownMinute}'`}
             </p>
           </div>
-          <TeamSide name={view.away.name} avg={avgOf(view.away)} align="right" />
+          <TeamSide side={view.away} align="right" />
         </div>
 
         <div className="mx-4 h-1 overflow-hidden rounded-full bg-surface-2">
@@ -486,14 +486,20 @@ export function LiveMatch({
 }
 
 function TeamSide({
-  name,
-  avg,
+  side,
   align,
 }: {
-  name: string;
-  avg?: number;
+  side: {
+    name: string;
+    crestClub?: string | null;
+    avgOverall?: number | null;
+    chemistry?: number | null;
+    onPitch: { overall: number }[];
+  };
   align: "left" | "right";
 }) {
+  const avg = side.avgOverall ?? avgOf(side);
+  const chem = side.chemistry;
   return (
     <div
       className={cn(
@@ -501,15 +507,27 @@ function TeamSide({
         align === "right" ? "sm:items-end" : "sm:items-start"
       )}
     >
-      <ClubCrest club={name} size={34} />
+      {/* El escudo sale del club elegido por el usuario, no del nombre */}
+      <ClubCrest club={side.crestClub || side.name} size={34} />
       <p className="w-full truncate text-center text-[11px] font-bold leading-tight sm:text-left">
-        {name}
+        {side.name}
       </p>
-      {avg != null && (
-        <p className="w-full text-center text-[10px] leading-none text-muted sm:text-left">
-          media <b className="font-display text-text">{avg}</b>
-        </p>
-      )}
+      <p className="w-full text-center text-[10px] leading-none text-muted sm:text-left">
+        media <b className="font-display text-text">{avg}</b>
+        {chem != null && (
+          <>
+            {" · "}quím{" "}
+            <b
+              className={cn(
+                "font-display",
+                chem >= 75 ? "text-turf" : chem >= 45 ? "text-trophy" : "text-danger"
+              )}
+            >
+              {chem}
+            </b>
+          </>
+        )}
+      </p>
     </div>
   );
 }
@@ -544,7 +562,13 @@ function StaminaPanel({ view }: { view: PublicMatchView }) {
             )}
           >
             <span className="inline-flex items-center gap-1.5">
-              <ClubCrest club={t === "home" ? view.home.name : view.away.name} size={15} />
+              <ClubCrest
+                club={
+                  (t === "home" ? view.home.crestClub : view.away.crestClub) ||
+                  (t === "home" ? view.home.name : view.away.name)
+                }
+                size={15}
+              />
               <span className="truncate">
                 {t === "home" ? view.home.name : view.away.name}
               </span>
