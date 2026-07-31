@@ -229,7 +229,7 @@ export function LiveMatch({
         )}
       >
         <div className="flex items-center justify-between gap-2 p-4 pb-3">
-          <TeamSide name={view.home.name} align="left" />
+          <TeamSide name={view.home.name} avg={avgOf(view.home)} align="left" />
           <div className="text-center">
             <div
               className={cn(
@@ -250,7 +250,7 @@ export function LiveMatch({
               {finished ? "FINAL" : `${shownMinute}'`}
             </p>
           </div>
-          <TeamSide name={view.away.name} align="right" />
+          <TeamSide name={view.away.name} avg={avgOf(view.away)} align="right" />
         </div>
 
         <div className="mx-4 h-1 overflow-hidden rounded-full bg-surface-2">
@@ -444,7 +444,15 @@ export function LiveMatch({
   );
 }
 
-function TeamSide({ name, align }: { name: string; align: "left" | "right" }) {
+function TeamSide({
+  name,
+  avg,
+  align,
+}: {
+  name: string;
+  avg?: number;
+  align: "left" | "right";
+}) {
   return (
     <div
       className={cn(
@@ -456,7 +464,20 @@ function TeamSide({ name, align }: { name: string; align: "left" | "right" }) {
       <p className="w-full truncate text-center text-[11px] font-bold leading-tight sm:text-left">
         {name}
       </p>
+      {avg != null && (
+        <p className="w-full text-center text-[10px] leading-none text-muted sm:text-left">
+          media <b className="font-display text-text">{avg}</b>
+        </p>
+      )}
     </div>
+  );
+}
+
+/** Media del once en cancha (los suplentes no cuentan). */
+function avgOf(t: { onPitch: { overall: number }[] }): number {
+  if (t.onPitch.length === 0) return 0;
+  return Math.round(
+    t.onPitch.reduce((sum, p) => sum + p.overall, 0) / t.onPitch.length
   );
 }
 
@@ -482,13 +503,12 @@ function StaminaPanel({ view }: { view: PublicMatchView }) {
             )}
           >
             <span className="inline-flex items-center gap-1.5">
-              <ClubCrest
-                club={t === "home" ? view.home.name : view.away.name}
-                size={14}
-                showFallback={false}
-              />
+              <ClubCrest club={t === "home" ? view.home.name : view.away.name} size={15} />
               <span className="truncate">
                 {t === "home" ? view.home.name : view.away.name}
+              </span>
+              <span className="font-display shrink-0 font-extrabold">
+                {avgOf(t === "home" ? view.home : view.away)}
               </span>
             </span>
           </button>
@@ -499,6 +519,9 @@ function StaminaPanel({ view }: { view: PublicMatchView }) {
           <div key={p.name} className="flex items-center gap-1.5">
             <span className="w-7 shrink-0 text-[10px] font-bold text-muted">
               {p.pos}
+            </span>
+            <span className="font-display w-5 shrink-0 text-center text-[12px] font-extrabold tabular-nums">
+              {p.overall}
             </span>
             <span
               className={cn(
@@ -526,6 +549,36 @@ function StaminaPanel({ view }: { view: PublicMatchView }) {
           </div>
         ))}
       </div>
+
+      {/* Suplentes del equipo elegido */}
+      {team.bench.length > 0 && (
+        <div className="border-t border-border px-3 pb-3 pt-2">
+          <p className="eyebrow mb-1">Suplentes · media {avgOf(team)}</p>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+            {team.bench.map((p) => (
+              <div key={p.name} className="flex items-center gap-1.5">
+                <span className="w-7 shrink-0 text-[10px] font-bold text-muted">
+                  {p.pos}
+                </span>
+                <span className="font-display w-5 shrink-0 text-center text-[12px] font-extrabold tabular-nums">
+                  {p.overall}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[11px] text-muted">
+                  {p.name}
+                </span>
+                <span
+                  className={cn(
+                    "shrink-0 text-[10px] font-bold tabular-nums",
+                    p.stamina >= 85 ? "text-turf" : p.stamina >= 65 ? "text-trophy" : "text-danger"
+                  )}
+                >
+                  {p.stamina}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
