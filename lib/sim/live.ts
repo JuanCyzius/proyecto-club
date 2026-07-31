@@ -113,6 +113,12 @@ export type LiveState = {
   wentToPenalties: boolean;
   /** Índice de MENTALITY_LEVELS elegido por el usuario (0-4). */
   mentality: number;
+  /**
+   * Momento (epoch ms) en que apareció la decisión pendiente. El
+   * servidor la resuelve solo si pasan más de 7 segundos, así el
+   * partido sigue corriendo aunque el usuario cambie de pestaña.
+   */
+  pendingSince?: number | null;
 };
 
 export type AdvanceResult = {

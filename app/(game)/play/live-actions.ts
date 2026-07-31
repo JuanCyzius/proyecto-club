@@ -123,6 +123,7 @@ async function persist(
     });
     // Descontar lesiones existentes y sortear nuevas.
     await supabase.rpc("apply_match_injuries", { p_card_ids: cardIds });
+    await supabase.rpc("apply_match_reds", { p_card_ids: cardIds });
   }
 
   // Recompensa (RPC idempotente).
@@ -137,6 +138,59 @@ async function persist(
  * Empieza un partido contra un rival SORTEADO dentro de la franja elegida.
  * El sorteo lo hace el servidor: el cliente no elige el club.
  */
+
+/** Segundos que espera el servidor antes de decidir por el usuario. */
+const DECISION_SECONDS = 7;
+
+/**
+ * Pone al día un partido que quedó corriendo mientras el usuario no
+ * miraba: resuelve solas las decisiones que llevan más de 7 segundos
+ * y avanza hasta la próxima parada vigente (o el final). Así se puede
+ * ir al chat y volver sin perder el partido.
+ */
+function catchUp(state: LiveState): {
+  state: LiveState;
+  events: MatchEvent[];
+  decision: Decision | null;
+  finished: boolean;
+} {
+  const events: MatchEvent[] = [];
+  let decision: Decision | null = state.pending ?? null;
+  let finished = false;
+  let guard = 0;
+
+  // Si nunca se marcó el inicio de la espera, se marca ahora.
+  if (decision && !state.pendingSince) state.pendingSince = Date.now();
+
+  while (guard++ < 60) {
+    const pend = state.pending;
+    if (!pend) break;
+    const since = state.pendingSince ?? Date.now();
+    if (Date.now() - since < DECISION_SECONDS * 1000) break;
+
+    // Se vencío el tiempo: elige la primera opción (la más conservadora)
+    const applied = applyDecision(state, pend.options[0].id);
+    events.push(...applied.newEvents);
+    const res = advance(state);
+    events.push(...res.newEvents);
+    decision = res.decision;
+    finished = res.finished;
+    state.pendingSince = res.decision ? Date.now() : null;
+    if (finished) break;
+  }
+
+  if (!state.pending) {
+    // Sin decisión pendiente: se avanza normalmente
+    const res = advance(state);
+    events.push(...res.newEvents);
+    decision = res.decision;
+    finished = res.finished;
+    if (res.decision && !state.pendingSince) state.pendingSince = Date.now();
+  }
+
+  return { state, events, decision, finished };
+}
+
 export async function startLiveMatch(tierCode: string): Promise<LiveResult> {
   const supabase = createClient();
   const {
@@ -226,6 +280,7 @@ export async function startLiveMatch(tierCode: string): Promise<LiveResult> {
     return { ok: false, error: "No se pudo crear el partido." };
 
   const res = advance(state);
+  res.state.pendingSince = res.decision ? Date.now() : null;
   const reward = await persist(admin, inserted.id, res.state, res.finished);
 
   return {
@@ -244,18 +299,42 @@ export async function advanceMatch(matchId: string): Promise<LiveResult> {
   const loaded = await loadLive(matchId);
   if (!loaded.ok) return { ok: false, error: loaded.error };
 
-  const res = advance(loaded.state);
+  const res = catchUp(loaded.state);
   const reward = await persist(loaded.admin, matchId, res.state, res.finished);
 
   return {
     ok: true,
     matchId,
-    events: res.newEvents,
+    events: res.events,
     view: publicView(res.state),
     decision: res.decision,
     finished: res.finished,
     reward,
   };
+}
+
+/**
+ * Reanuda un partido en curso: lo pone al día y devuelve el estado
+ * actual. Se usa al volver a la pantalla desde otra pestaña.
+ */
+export async function resumeLiveMatch(): Promise<LiveResult> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "No autenticado." };
+
+  const { data } = await supabase
+    .from("matches")
+    .select("id")
+    .eq("home_user", user.id)
+    .eq("is_live", true)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return { ok: false, error: "No tenés partidos en curso." };
+  return advanceMatch(data.id);
 }
 
 /** Aplica la decisión elegida y sigue hasta la próxima parada. */
@@ -275,8 +354,10 @@ export async function decideMatch(
   );
   if (!valid) return { ok: false, error: "Opción inválida." };
 
+  state.pendingSince = null;
   const applied = applyDecision(state, optionId);
   const res = advance(state);
+  state.pendingSince = res.decision ? Date.now() : null;
   const events = [...applied.newEvents, ...res.newEvents];
   const reward = await persist(loaded.admin, matchId, res.state, res.finished);
 

@@ -86,14 +86,16 @@ export async function buildHomeTeam(
   const { data: cardRows } = await supabase
     .from("player_cards")
     .select(
-      "id, stamina, injury_matches_left, template:player_templates(position, overall, attributes, gk_attributes, identity:player_identities(name, club_name, league_name, nationality))"
+      "id, stamina, injury_matches_left, suspension_matches, template:player_templates(position, overall, attributes, gk_attributes, identity:player_identities(name, club_name, league_name, nationality))"
     )
     .eq("owner_id", userId);
 
   const cards = new Map<string, OwnedRow>();
   const injured = new Set<string>();
+  const suspended = new Set<string>();
   for (const r of (cardRows ?? []) as any[]) {
     if ((r.injury_matches_left ?? 0) > 0) injured.add(r.id);
+    if ((r.suspension_matches ?? 0) > 0) suspended.add(r.id);
     cards.set(r.id, {
       id: r.id,
       position: r.template?.position,
@@ -138,6 +140,11 @@ export async function buildHomeTeam(
     if (cardId && injured.has(cardId)) {
       return {
         error: `${c.name} está lesionado. Cambialo o curalo con un ítem antes de jugar.`,
+      };
+    }
+    if (cardId && suspended.has(cardId)) {
+      return {
+        error: `${c.name} está suspendido por roja. Cambialo antes de jugar.`,
       };
     }
     picked.push({ slotPos: slot.pos, c });

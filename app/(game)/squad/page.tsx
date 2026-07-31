@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { DEFAULT_TACTICS, type Tactics } from "@/lib/formations";
 import type { OwnedCard } from "@/lib/players";
 import { SquadBuilder } from "./squad-builder";
+import { myItems } from "./quick-actions";
 import { StarterEmpty } from "./starter-empty";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ export default async function SquadPage() {
 
   // Todo lo que no depende de otra consulta se pide a la vez: antes eran
   // seis viajes encadenados a la base y ahora son dos rondas.
+  const items = await myItems();
   const [{ data: me }, { data: cardRows }, { data: squad }, { data: slotRows }] =
     await Promise.all([
       supabase
@@ -26,7 +28,7 @@ export default async function SquadPage() {
       supabase
         .from("player_cards")
         .select(
-          "id, stamina, injury_type, injury_matches_left, template:player_templates(position, positions, overall, rarity, attributes, gk_attributes, identity:player_identities(name, club_name, league_name, nationality))"
+          "id, stamina, injury_type, injury_matches_left, suspension_matches, template:player_templates(position, positions, overall, rarity, attributes, gk_attributes, identity:player_identities(name, club_name, league_name, nationality))"
         )
         .eq("owner_id", user.id),
       supabase
@@ -58,6 +60,8 @@ export default async function SquadPage() {
     stamina: typeof r.stamina === "number" ? r.stamina : 100,
     injuryType: r.injury_type ?? null,
     injuryMatches: typeof r.injury_matches_left === "number" ? r.injury_matches_left : 0,
+    suspensionMatches:
+      typeof r.suspension_matches === "number" ? r.suspension_matches : 0,
   }));
 
   if (cards.length === 0) {
@@ -86,6 +90,7 @@ export default async function SquadPage() {
         initialFormation={squad?.formation ?? "4-3-3"}
         initialTactics={(squad?.tactics as Tactics) ?? DEFAULT_TACTICS}
         initialSlots={initialSlots}
+        items={items}
       />
     </div>
   );

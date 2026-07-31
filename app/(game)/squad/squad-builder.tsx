@@ -1,9 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Flag } from "@/components/ui/flag";
 import { Portrait } from "@/components/player-card/portrait";
-import { Check, HeartPulse, X } from "lucide-react";
+import { Ban, Check, HeartPulse, X, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   FORMATIONS,
@@ -27,6 +29,11 @@ import {
   type ChemPlayer,
 } from "@/lib/chemistry";
 import { shortLeague } from "@/lib/flags";
+import {
+  applyItemToSquadQuick,
+  paySuspension,
+  type QuickItem,
+} from "./quick-actions";
 import { shortName } from "@/lib/format";
 import { ClubCrest } from "@/components/club/club-crest";
 import { Modal } from "@/components/ui/modal";
@@ -57,15 +64,75 @@ export function SquadBuilder({
   initialFormation,
   initialTactics,
   initialSlots,
+  items,
 }: {
   cards: OwnedCard[];
   initialFormation: string;
   initialTactics: Tactics;
   initialSlots: Record<string, string>;
+  items: QuickItem[];
 }) {
   const [formation, setFormation] = useState(initialFormation);
   const [tactics, setTactics] = useState<Tactics>(initialTactics);
   const [slots, setSlots] = useState<Record<string, string>>(initialSlots);
+  const router = useRouter();
+
+  // Acciones rápidas de plantilla
+  const [quickBusy, setQuickBusy] = useState(false);
+  const [quickMsg, setQuickMsg] = useState<string | null>(null);
+  const [quickErr, setQuickErr] = useState<string | null>(null);
+
+  const alerts = useMemo(
+    () =>
+      cards
+        .filter((c) => (c.injuryMatches ?? 0) > 0 || (c.suspensionMatches ?? 0) > 0)
+        .map((c) => {
+          const sus = c.suspensionMatches ?? 0;
+          return sus > 0
+            ? {
+                id: c.id,
+                name: shortName(c.name),
+                kind: "sus" as const,
+                label: `suspendido ${sus} fecha${sus > 1 ? "s" : ""}`,
+                cost: sus * 500,
+              }
+            : {
+                id: c.id,
+                name: shortName(c.name),
+                kind: "inj" as const,
+                label: `lesionado ${c.injuryMatches} partido${(c.injuryMatches ?? 0) > 1 ? "s" : ""}`,
+                cost: 0,
+              };
+        }),
+    [cards]
+  );
+
+  function quickUse(code: string) {
+    setQuickErr(null);
+    setQuickMsg(null);
+    setQuickBusy(true);
+    applyItemToSquadQuick(code).then((r) => {
+      setQuickBusy(false);
+      if (r.ok) {
+        setQuickMsg(`Aplicado a ${r.affected ?? 0} jugador(es).`);
+        router.refresh();
+      } else setQuickErr(r.error ?? "No se pudo.");
+    });
+  }
+
+  function liftBan(cardId: string) {
+    setQuickErr(null);
+    setQuickMsg(null);
+    setQuickBusy(true);
+    paySuspension(cardId).then((r) => {
+      setQuickBusy(false);
+      if (r.ok) {
+        setQuickMsg("Sanción levantada.");
+        router.refresh();
+      } else setQuickErr(r.error ?? "No se pudo.");
+    });
+  }
+
   const [picker, setPicker] = useState<{ slot: string; pos?: Position } | null>(
     null
   );
@@ -344,6 +411,61 @@ export function SquadBuilder({
       </div>
 
       {/* Campo */}
+      {/* Acciones rápidas: energía y curación sin salir de la plantilla */}
+      {(items.length > 0 || alerts.length > 0) && (
+        <div className="space-y-2 rounded-2xl border border-border bg-surface p-3">
+          {alerts.length > 0 && (
+            <div className="space-y-1">
+              {alerts.map((a) => (
+                <div key={a.id} className="flex items-center gap-2 text-xs">
+                  {a.kind === "inj" ? (
+                    <HeartPulse size={13} className="shrink-0 text-danger" />
+                  ) : (
+                    <Ban size={13} className="shrink-0 text-danger" />
+                  )}
+                  <span className="min-w-0 flex-1 truncate">
+                    <b>{a.name}</b>{" "}
+                    <span className="text-muted">{a.label}</span>
+                  </span>
+                  {a.kind === "sus" && (
+                    <button
+                      onClick={() => liftBan(a.id)}
+                      disabled={quickBusy}
+                      className="shrink-0 rounded-md border border-trophy/50 bg-trophy/15 px-2 py-0.5 text-[10px] font-bold text-trophy disabled:opacity-40"
+                    >
+                      Pagar {a.cost}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {items.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {items.map((it) => (
+                <button
+                  key={it.code}
+                  onClick={() => quickUse(it.code)}
+                  disabled={quickBusy}
+                  className={cn(
+                    "flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-semibold disabled:opacity-40",
+                    it.kind === "heal"
+                      ? "border-danger/40 bg-danger/10 text-danger"
+                      : "border-turf/40 bg-turf-soft/30 text-turf"
+                  )}
+                >
+                  {it.kind === "heal" ? <HeartPulse size={12} /> : <Zap size={12} />}
+                  {it.name} ×{it.qty}
+                </button>
+              ))}
+            </div>
+          )}
+          {quickMsg && <p className="text-[11px] text-turf">{quickMsg}</p>}
+          {quickErr && <p className="text-[11px] text-danger">{quickErr}</p>}
+        </div>
+      )}
+
       <div
         className="relative aspect-[5/8] w-full overflow-hidden rounded-2xl border border-border"
         style={{ containerType: "inline-size" }}
@@ -832,6 +954,7 @@ function PitchPlayer({
   const chemDots = Math.round(chem / 2); // 0-5
   const stamina = typeof card.stamina === "number" ? card.stamina : 100;
   const injured = (card.injuryMatches ?? 0) > 0;
+  const banned = (card.suspensionMatches ?? 0) > 0;
   const aura = RARITY_AURA[card.rarity] ?? RARITY_AURA.common;
 
   // Carta compacta estilo FIFA: recuadro con borde del color de la
@@ -864,7 +987,7 @@ function PitchPlayer({
       style={{
         width: "17cqw",
         maxWidth: "97px",
-        boxShadow: injured
+        boxShadow: injured || banned
           ? "0 0 0 1.5px #ef4444, 0 0 8px 1px rgba(239,68,68,0.55)"
           : `0 0 0 1.5px ${aura.ring}, 0 0 8px 1px ${aura.glow}`,
       }}
@@ -892,6 +1015,13 @@ function PitchPlayer({
             className="rounded-full"
             style={{ width: "5.8cqw", height: "5.8cqw", minWidth: 19, minHeight: 19 }}
           />
+          {banned && (
+            <span
+              className="absolute -left-1 -top-1 rounded-[2px] bg-danger"
+              style={{ width: "2.4cqw", height: "3.2cqw", minWidth: 8, minHeight: 11 }}
+              title={`Suspendido ${card.suspensionMatches} fecha(s)`}
+            />
+          )}
           {injured && (
             <HeartPulse
               className="absolute -right-1 -top-1 rounded-full bg-danger p-[1px] text-bg"

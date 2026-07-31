@@ -257,4 +257,5 @@ export type OwnedCard = {
   stamina?: number;
   injuryType?: string | null;
   injuryMatches?: number;
+  suspensionMatches?: number;
 };

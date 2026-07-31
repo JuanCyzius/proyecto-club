@@ -55,6 +55,8 @@ const TONE_ICON: Record<string, typeof Zap> = {
   neutral: Gauge,
 };
 
+const DECISION_SECONDS = 7;
+
 export function LiveMatch({
   matchId,
   initialEvents,
@@ -196,6 +198,37 @@ export function LiveMatch({
   // Solo se pausa para decidir cuando el relato ya alcanzó ese momento.
   const showDecision =
     decision != null && queue.length === 0 && clock >= view.minute - 0.01;
+
+  // Cuenta regresiva de la decisión: a los 7 segundos se elige sola.
+  // El servidor aplica la misma regla si te fuiste de la pantalla.
+  const [secsLeft, setSecsLeft] = useState(DECISION_SECONDS);
+  useEffect(() => {
+    if (!showDecision || !decision || busy) {
+      setSecsLeft(DECISION_SECONDS);
+      return;
+    }
+    if (secsLeft <= 0) {
+      choose(decision.options[0].id);
+      return;
+    }
+    const t = setTimeout(() => setSecsLeft((v) => v - 1), 1000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showDecision, decision, busy, secsLeft]);
+
+  // Al volver de otra pestaña, poner el partido al día
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      if (finished || busy) return;
+      setBusy(true);
+      advanceMatch(matchId).then(handle);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchId, finished, busy, handle]);
+
   // El marcador debe reflejar lo que el relato YA mostró: si el servidor
   // va adelantado, el gol todavía no se cantó y no debe aparecer.
   const [shownHome, shownAway] = useMemo(() => {
@@ -384,6 +417,14 @@ export function LiveMatch({
             )}
           </div>
           <p className="pb-1 text-sm text-muted">{decision.subtitle}</p>
+          <p
+            className={cn(
+              "pb-1 text-center text-xs font-bold tabular-nums",
+              secsLeft <= 3 ? "text-danger" : "text-muted"
+            )}
+          >
+            Se elige sola en {Math.max(0, secsLeft)}s
+          </p>
 
           <div className="space-y-2">
             {decision.options.map((o) => {

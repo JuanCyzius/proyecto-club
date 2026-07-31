@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { startLiveMatch, type LiveResult } from "./live-actions";
+import { startLiveMatch, resumeLiveMatch, type LiveResult } from "./live-actions";
 import { LiveMatch } from "./live-match";
 
 export type Tier = {
@@ -30,7 +30,13 @@ function tierStyle(max: number) {
   return { text: "text-muted", ring: "border-border", bg: "" };
 }
 
-export function TierList({ tiers }: { tiers: Tier[] }) {
+export function TierList({
+  tiers,
+  ongoing,
+}: {
+  tiers: Tier[];
+  ongoing?: { awayName: string; score: string } | null;
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
@@ -38,6 +44,19 @@ export function TierList({ tiers }: { tiers: Tier[] }) {
   const [live, setLive] = useState<Extract<LiveResult, { ok: true }> | null>(
     null
   );
+
+  function resume() {
+    setError(null);
+    setBusy("resume");
+    start(async () => {
+      const res = await resumeLiveMatch();
+      if (res.ok) setLive(res);
+      else {
+        setError(res.error);
+        setBusy(null);
+      }
+    });
+  }
 
   function play(code: string) {
     setError(null);
@@ -73,6 +92,31 @@ export function TierList({ tiers }: { tiers: Tier[] }) {
 
   return (
     <div className="space-y-3">
+      {/* Partido en curso: sigue corriendo aunque cambies de pestaña */}
+      {ongoing && (
+        <button
+          onClick={resume}
+          disabled={pending}
+          className="flex w-full items-center gap-3 rounded-2xl border border-turf bg-turf-soft/25 p-3 text-left disabled:opacity-60"
+        >
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-turf opacity-70" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-turf" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold text-turf">
+              Tenés un partido en curso
+            </span>
+            <span className="block truncate text-xs text-muted">
+              vs {ongoing.awayName} · {ongoing.score}
+            </span>
+          </span>
+          <span className="shrink-0 text-xs font-bold text-turf">
+            {busy === "resume" ? "Volviendo…" : "Volver →"}
+          </span>
+        </button>
+      )}
+
       {/* Modo Draft */}
       <Link
         href="/draft"
