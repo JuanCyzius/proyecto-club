@@ -8,6 +8,7 @@ import { Notice } from "@/components/ui/layout";
 import { useRouter } from "next/navigation";
 import { Coins, Search, Gavel, Zap, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { shortLeague } from "@/lib/flags";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
@@ -58,7 +59,7 @@ export function MarketView({
   userId: string;
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<"buy" | "mine">("buy");
+  const [tab, setTab] = useState<"buy" | "auctions" | "mine">("buy");
   const [balance, setBalance] = useState(coins);
 
   // El saldo puede cambiar en otra pantalla: se resincroniza con el real.
@@ -73,25 +74,91 @@ export function MarketView({
   const [search, setSearch] = useState("");
   const [rarity, setRarity] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
+  const [fLeague, setFLeague] = useState("");
+  const [fClub, setFClub] = useState("");
+  const [fNation, setFNation] = useState("");
+  const [sortBy, setSortBy] = useState<
+    "recent" | "old" | "cheap" | "expensive"
+  >("recent");
+
+  // Opciones de los filtros, tomadas de lo que hay publicado ahora
+  const opts = useMemo(() => {
+    const others = listings.filter((l) => l.seller_id !== userId);
+    const uniq = (vals: (string | null)[]) =>
+      Array.from(new Set(vals.filter(Boolean) as string[])).sort();
+    return {
+      leagues: uniq(others.map((l) => l.league_name)),
+      clubs: uniq(others.map((l) => l.club_name)),
+      nations: uniq(others.map((l) => l.nationality)),
+    };
+  }, [listings, userId]);
   const [selected, setSelected] = useState<Listing | null>(null);
   const [bidAmount, setBidAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
+  // Opciones de los filtros: se arman con lo que hay publicado
+  const { leagues, clubs, nations } = useMemo(() => {
+    const lg = new Set<string>();
+    const cl = new Set<string>();
+    const na = new Set<string>();
+    for (const l of listings) {
+      if (l.league_name) lg.add(l.league_name);
+      if (l.club_name) cl.add(l.club_name);
+      if (l.nationality) na.add(l.nationality);
+    }
+    return {
+      leagues: [...lg].sort(),
+      clubs: [...cl].sort(),
+      nations: [...na].sort(),
+    };
+  }, [listings]);
+
+  /** Precio de referencia: lo que costaría llevárselo ahora. */
+  const priceOf = (l: Listing) => l.buy_now ?? l.current_bid ?? l.start_price;
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     const max = maxPrice ? Number(maxPrice) : null;
-    return listings.filter((l) => {
+    const list = listings.filter((l) => {
       if (l.seller_id === userId) return false;
       if (term && !l.player_name.toLowerCase().includes(term)) return false;
       if (rarity && l.rarity !== rarity) return false;
-      if (max) {
-        const price = l.buy_now ?? l.current_bid ?? l.start_price;
-        if (price > max) return false;
-      }
+      if (fLeague && l.league_name !== fLeague) return false;
+      if (fClub && l.club_name !== fClub) return false;
+      if (fNation && l.nationality !== fNation) return false;
+      if (max && priceOf(l) > max) return false;
       return true;
     });
-  }, [listings, search, rarity, maxPrice, userId]);
+
+    // El orden por antigüedad usa el vencimiento: las subastas duran
+    // lo mismo, así que la que termina más tarde es la más reciente.
+    const byEnd = (a: Listing, b: Listing) =>
+      new Date(a.ends_at).getTime() - new Date(b.ends_at).getTime();
+
+    return [...list].sort((a, b) => {
+      switch (sortBy) {
+        case "cheap":
+          return priceOf(a) - priceOf(b);
+        case "expensive":
+          return priceOf(b) - priceOf(a);
+        case "old":
+          return byEnd(a, b);
+        default:
+          return byEnd(b, a);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listings, search, rarity, maxPrice, fLeague, fClub, fNation, sortBy, userId]);
+
+  /** Con puja encima: son las que están realmente disputadas. */
+  const auctions = useMemo(
+    () => filtered.filter((l) => l.current_bid != null),
+    [filtered]
+  );
+
+  /** Lo que se muestra según la pestaña (los filtros aplican a las dos). */
+  const shown = tab === "auctions" ? auctions : filtered;
 
   function openListing(l: Listing) {
     setSelected(l);
@@ -150,17 +217,18 @@ export function MarketView({
       <Tabs
         tabs={[
           { value: "buy", label: "Comprar" },
+          { value: "auctions", label: "Subastas", badge: auctions.length },
           { value: "mine", label: `Mis ventas (${mine.filter((m) => m.status === "active").length})` },
         ]}
         value={tab}
-        onChange={(v) => setTab(v as "buy" | "mine")}
+        onChange={(v) => setTab(v as "buy" | "auctions" | "mine")}
       />
 
       {error && (
         <Notice tone="error">{error}</Notice>
       )}
 
-      {tab === "buy" ? (
+      {tab === "buy" || tab === "auctions" ? (
         <>
           <div className="space-y-2">
             <div className="relative">
@@ -197,15 +265,82 @@ export function MarketView({
                 }
               />
             </div>
+
+            {/* Liga · Club · Nacionalidad */}
+            <div className="grid grid-cols-3 gap-2">
+              <select
+                value={fLeague}
+                onChange={(e) => setFLeague(e.target.value)}
+                className="h-10 truncate rounded-xl border border-border bg-surface-2 px-2 text-xs focus:border-turf focus:outline-none"
+              >
+                <option value="">Liga: todas</option>
+                {opts.leagues.map((v) => (
+                  <option key={v} value={v}>
+                    {shortLeague(v)}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={fClub}
+                onChange={(e) => setFClub(e.target.value)}
+                className="h-10 truncate rounded-xl border border-border bg-surface-2 px-2 text-xs focus:border-turf focus:outline-none"
+              >
+                <option value="">Club: todos</option>
+                {opts.clubs.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={fNation}
+                onChange={(e) => setFNation(e.target.value)}
+                className="h-10 truncate rounded-xl border border-border bg-surface-2 px-2 text-xs focus:border-turf focus:outline-none"
+              >
+                <option value="">País: todos</option>
+                {opts.nations.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Orden */}
+            <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+              {(
+                [
+                  ["recent", "Más nuevos"],
+                  ["old", "Más viejos"],
+                  ["cheap", "Más baratos"],
+                  ["expensive", "Más caros"],
+                ] as const
+              ).map(([v, label]) => (
+                <button
+                  key={v}
+                  onClick={() => setSortBy(v)}
+                  className={cn(
+                    "shrink-0 rounded-lg border px-2.5 py-1 text-xs font-semibold",
+                    sortBy === v
+                      ? "border-turf bg-turf-soft/30 text-turf"
+                      : "border-border text-muted"
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {filtered.length === 0 ? (
+          {shown.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted">
-              No hay jugadores en venta con esos filtros.
+              {tab === "auctions"
+                ? "Todavía no hay subastas con pujas."
+                : "No hay jugadores en venta con esos filtros."}
             </p>
           ) : (
             <div className="space-y-1.5">
-              {filtered.map((l) => (
+              {shown.map((l) => (
                 <button
                   key={l.id}
                   onClick={() => openListing(l)}
@@ -235,11 +370,25 @@ export function MarketView({
                     </span>
                   </span>
                   <span className="shrink-0 text-right">
-                    <span className="block font-display text-sm font-extrabold text-trophy">
+                    {/* Rojo = ya tiene puja encima (está en subasta) */}
+                    <span
+                      className={cn(
+                        "block font-display text-sm font-extrabold",
+                        l.current_bid != null ? "text-danger" : "text-trophy"
+                      )}
+                    >
                       {(l.current_bid ?? l.start_price).toLocaleString("es")}
                     </span>
                     <span className="flex items-center justify-end gap-0.5 text-[9px] text-muted">
-                      <Clock size={9} /> {timeLeft(l.ends_at)}
+                      {l.current_bid != null ? (
+                        <>
+                          <Gavel size={9} className="text-danger" /> en puja
+                        </>
+                      ) : (
+                        <>
+                          <Clock size={9} /> {timeLeft(l.ends_at)}
+                        </>
+                      )}
                     </span>
                   </span>
                 </button>
