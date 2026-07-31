@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Play, Pause, FastForward, ArrowLeft, Coins } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TeamReportCard, type TeamReport } from "@/components/match/team-report";
 import { ClubCrest } from "@/components/club/club-crest";
 import type { MatchEvent, PlayerRating, TeamStats } from "@/lib/sim/types";
 
@@ -37,6 +38,7 @@ export function MatchReplay({
   wentToPenalties,
   penalties,
   rewardCoins,
+  teams,
 }: {
   homeName: string;
   awayName: string;
@@ -48,6 +50,7 @@ export function MatchReplay({
   wentToPenalties: boolean;
   penalties: [number, number] | null;
   rewardCoins?: number | null;
+  teams?: TeamReport | null;
 }) {
   const [idx, setIdx] = useState(1);
   const [playing, setPlaying] = useState(true);
@@ -131,6 +134,13 @@ export function MatchReplay({
             style={{ transform: `scaleX(${(finished ? 100 : progress) / 100})`, transformOrigin: "left", transition: "transform 400ms cubic-bezier(0.16,1,0.3,1)" }}
           />
         </div>
+
+        {/* Media, química y onces de ambos equipos */}
+        {teams && (
+          <div className="m-3 mb-0">
+            <TeamReportCard report={teams} />
+          </div>
+        )}
 
         {/* Recompensa: visible sin hacer scroll */}
         {finished && rewardCoins != null && rewardCoins > 0 && (

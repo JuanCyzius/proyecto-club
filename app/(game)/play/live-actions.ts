@@ -50,7 +50,7 @@ async function loadLive(matchId: string): Promise<LoadedLive> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("matches")
-    .select("id, home_user, live_state, is_live, competition")
+    .select("id, home_user, live_state, is_live, competition, log")
     .eq("id", matchId)
     .maybeSingle();
 
@@ -83,6 +83,13 @@ async function persist(
   }
 
   const result = finalResult(state);
+  // Se relee el log para conservar el parte de equipos guardado al crear
+  const { data: prev } = await admin
+    .from("matches")
+    .select("log")
+    .eq("id", matchId)
+    .maybeSingle();
+
   await admin
     .from("matches")
     .update({
@@ -94,6 +101,8 @@ async function persist(
       winner: result.winner,
       played_at: new Date().toISOString(),
       log: {
+        // Se conserva el parte de equipos guardado al crear el partido
+        ...((prev?.log as Record<string, unknown>) ?? {}),
         events: result.events,
         stats: result.stats,
         ratings: result.ratings,
@@ -181,6 +190,34 @@ export async function startLiveMatch(tierCode: string): Promise<LiveResult> {
       home_name: home.team.name,
       away_name: away.name,
       live_state: state as unknown as object,
+      // Parte de equipos: media, química y once de ambos, para mostrarlo
+      // antes y después del partido.
+      log: {
+        teams: {
+          home: {
+            name: home.team.name,
+            avgOverall: home.team.avgOverall ?? null,
+            chemistry: home.team.chemistry ?? null,
+            starters: home.team.starters.map((p) => ({
+              name: p.name,
+              position: p.position,
+              slotPos: p.slotPos,
+              overall: p.overall,
+            })),
+          },
+          away: {
+            name: away.name,
+            avgOverall: away.avgOverall ?? null,
+            chemistry: away.chemistry ?? 100,
+            starters: away.starters.map((p) => ({
+              name: p.name,
+              position: p.position,
+              slotPos: p.slotPos,
+              overall: p.overall,
+            })),
+          },
+        },
+      },
     })
     .select("id")
     .single();

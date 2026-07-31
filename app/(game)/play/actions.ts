@@ -63,6 +63,32 @@ export async function simulateVsAI(tierCode: string): Promise<PlayResult> {
         stats: result.stats,
         ratings: result.ratings,
         wentToPenalties: result.wentToPenalties,
+        // Parte de equipos: se guarda para poder mostrar la media, la
+        // química y la formación de ambos antes/después del partido.
+        teams: {
+          home: {
+            name: home.team.name,
+            avgOverall: home.team.avgOverall ?? null,
+            chemistry: home.team.chemistry ?? null,
+            starters: home.team.starters.map((p) => ({
+              name: p.name,
+              position: p.position,
+              slotPos: p.slotPos,
+              overall: p.overall,
+            })),
+          },
+          away: {
+            name: away.name,
+            avgOverall: away.avgOverall ?? null,
+            chemistry: away.chemistry ?? 100,
+            starters: away.starters.map((p) => ({
+              name: p.name,
+              position: p.position,
+              slotPos: p.slotPos,
+              overall: p.overall,
+            })),
+          },
+        },
         penalties: result.penalties ?? null,
       },
     })

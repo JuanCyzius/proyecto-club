@@ -20,6 +20,10 @@ export type SimTeam = {
   starters: SimPlayer[]; // 11
   bench: SimPlayer[];
   tactics: Tactics;
+  /** Química del once (0-100). Los rivales de la IA siempre son 100. */
+  chemistry?: number;
+  /** Media del once, para mostrarla antes del partido. */
+  avgOverall?: number;
 };
 
 export type Side = "home" | "away";

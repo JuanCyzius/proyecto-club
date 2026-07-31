@@ -16,6 +16,7 @@ import {
   type Position,
 } from "@/lib/players";
 import type { SimPlayer, SimTeam } from "@/lib/sim/types";
+import { playerChemistry, teamChemistry, type ChemPlayer } from "@/lib/chemistry";
 
 const STYLE_TACTICS: Record<string, Tactics> = {
   defensive: { mentality: "defensive", press: "low", tempo: "slow", width: "narrow", passing: "mixed" },
@@ -33,7 +34,44 @@ type OwnedRow = {
   name: string;
   gkAttributes?: GkAttributes | null;
   stamina?: number;
+  clubName?: string | null;
+  leagueName?: string | null;
+  nationality?: string | null;
 };
+
+/**
+ * La química rinde en la cancha: un once sin conexiones juega peor.
+ * Cada jugador escala sus atributos entre 0.88 (química 0) y 1.00
+ * (química 10). Los rivales de la IA juegan siempre al 100%: son
+ * compañeros reales del mismo club.
+ */
+function chemFactor(chem10: number): number {
+  return 0.88 + 0.012 * Math.max(0, Math.min(10, chem10));
+}
+
+function scaleAttrs(a: Attributes, f: number): Attributes {
+  return {
+    pace: Math.round(a.pace * f),
+    shooting: Math.round(a.shooting * f),
+    passing: Math.round(a.passing * f),
+    defending: Math.round(a.defending * f),
+    physical: Math.round(a.physical * f),
+    dribbling: Math.round(a.dribbling * f),
+  };
+}
+
+function scaleGk(a: GkAttributes | null | undefined, f: number): GkAttributes | null {
+  if (!a) return null;
+  const sc = (v?: number) => (typeof v === "number" ? Math.round(v * f) : v);
+  return {
+    diving: sc(a.diving),
+    handling: sc(a.handling),
+    kicking: sc(a.kicking),
+    positioning: sc(a.positioning),
+    reflexes: sc(a.reflexes),
+    speed: sc(a.speed),
+  };
+}
 
 export async function buildHomeTeam(
   supabase: ReturnType<typeof createClient> | ReturnType<typeof createAdminClient>,
@@ -48,7 +86,7 @@ export async function buildHomeTeam(
   const { data: cardRows } = await supabase
     .from("player_cards")
     .select(
-      "id, stamina, injury_matches_left, template:player_templates(position, overall, attributes, gk_attributes, identity:player_identities(name))"
+      "id, stamina, injury_matches_left, template:player_templates(position, overall, attributes, gk_attributes, identity:player_identities(name, club_name, league_name, nationality))"
     )
     .eq("owner_id", userId);
 
@@ -64,6 +102,9 @@ export async function buildHomeTeam(
       name: r.template?.identity?.name ?? "—",
       gkAttributes: r.template?.gk_attributes ?? null,
       stamina: typeof r.stamina === "number" ? r.stamina : 100,
+      clubName: r.template?.identity?.club_name ?? null,
+      leagueName: r.template?.identity?.league_name ?? null,
+      nationality: r.template?.identity?.nationality ?? null,
     });
   }
 
@@ -84,7 +125,8 @@ export async function buildHomeTeam(
   const formation = squad?.formation ?? "4-3-3";
   const def = FORMATIONS[formation] ? formation : "4-3-3";
 
-  const starters: SimPlayer[] = [];
+  // Primer recorrido: validar el once y juntar los datos de química
+  const picked: { slotPos: Position; c: OwnedRow }[] = [];
   for (const slot of FORMATIONS[def]) {
     const cardId = slots.get(slot.code);
     const c = cardId ? cards.get(cardId) : undefined;
@@ -98,30 +140,46 @@ export async function buildHomeTeam(
         error: `${c.name} está lesionado. Cambialo o curalo con un ítem antes de jugar.`,
       };
     }
-    starters.push({
+    picked.push({ slotPos: slot.pos, c });
+  }
+
+  // Química real del once: afecta los atributos de cada jugador
+  const chemSquad: ChemPlayer[] = picked.map(({ slotPos, c }) => ({
+    cardPos: c.position,
+    slotPos,
+    club: c.clubName,
+    league: c.leagueName,
+    nation: c.nationality,
+  }));
+  const teamChem = teamChemistry(chemSquad);
+
+  const starters: SimPlayer[] = picked.map(({ slotPos, c }, i) => {
+    const f = chemFactor(playerChemistry(chemSquad[i], chemSquad).total);
+    return {
       name: c.name,
       position: c.position,
-      slotPos: slot.pos,
-      attributes: c.attributes,
+      slotPos,
+      attributes: scaleAttrs(c.attributes, f),
       overall: c.overall,
-      gkAttributes: c.gkAttributes ?? null,
+      gkAttributes: scaleGk(c.gkAttributes, f),
       cardId: c.id,
       startStamina: c.stamina ?? 100,
-    });
-  }
+    };
+  });
 
   const bench: SimPlayer[] = [];
   for (const b of BENCH_SLOTS) {
     const cardId = slots.get(b);
     const c = cardId ? cards.get(cardId) : undefined;
     if (c) {
+      const fb = chemFactor(teamChem / 10);
       bench.push({
         name: c.name,
         position: c.position,
         slotPos: c.position,
-        attributes: c.attributes,
+        attributes: scaleAttrs(c.attributes, fb),
         overall: c.overall,
-        gkAttributes: c.gkAttributes ?? null,
+        gkAttributes: scaleGk(c.gkAttributes, fb),
         cardId: c.id,
         startStamina: c.stamina ?? 100,
       });
@@ -134,6 +192,10 @@ export async function buildHomeTeam(
       starters,
       bench,
       tactics: validTactics((squad?.tactics as Tactics) ?? DEFAULT_TACTICS),
+      chemistry: teamChem,
+      avgOverall: Math.round(
+        starters.reduce((sum, p) => sum + p.overall, 0) / starters.length
+      ),
     },
   };
 }
@@ -310,5 +372,10 @@ export async function buildAiTeam(
     starters,
     bench,
     tactics: STYLE_TACTICS[ai.style] ?? DEFAULT_TACTICS,
+    // Los rivales de la IA son compañeros del mismo club: química plena.
+    chemistry: 100,
+    avgOverall: Math.round(
+      starters.reduce((sum, p) => sum + p.overall, 0) / starters.length
+    ),
   };
 }

@@ -5,12 +5,15 @@ import { MatchReplay } from "./match-replay";
 
 export const dynamic = "force-dynamic";
 
+import type { TeamReport } from "@/components/match/team-report";
+
 type MatchLog = {
   events: MatchEvent[];
   stats: { home: TeamStats; away: TeamStats };
   ratings: { home: PlayerRating[]; away: PlayerRating[] };
   wentToPenalties: boolean;
   penalties: [number, number] | null;
+  teams?: TeamReport;
 };
 
 export default async function MatchPage({
@@ -42,6 +45,7 @@ export default async function MatchPage({
       wentToPenalties={log.wentToPenalties}
       penalties={log.penalties}
       rewardCoins={data.reward_coins ?? null}
+      teams={log.teams ?? null}
     />
   );
 }
