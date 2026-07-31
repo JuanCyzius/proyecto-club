@@ -835,16 +835,16 @@ function PitchPlayer({
   return (
     <div
       className="flex flex-col items-center"
-      style={{ width: "16.6cqw", maxWidth: "93px" }}
+      style={{ width: "15.2cqw", maxWidth: "85px" }}
     >
       {/* Rostro con aura del color de la rareza */}
       <div
         className="relative rounded-full bg-bg/90 backdrop-blur"
         style={{
-          width: "11.2cqw",
-          height: "11.2cqw",
-          maxWidth: "61px",
-          maxHeight: "61px",
+          width: "10cqw",
+          height: "10cqw",
+          maxWidth: "55px",
+          maxHeight: "55px",
           boxShadow: injured
             ? "0 0 0 2px #ef4444, 0 0 10px 2px rgba(239,68,68,0.6)"
             : `0 0 0 2px ${aura.ring}, 0 0 10px 2px ${aura.glow}`,
@@ -863,7 +863,7 @@ function PitchPlayer({
         {/* Media */}
         <span
           className="absolute -left-[0.4em] -top-[0.3em] rounded-md bg-bg px-[0.35em] font-display font-extrabold leading-tight text-text ring-1 ring-border"
-          style={{ fontSize: "4cqw" }}
+          style={{ fontSize: "3.7cqw" }}
         >
           {card.overall}
         </span>
@@ -888,8 +888,8 @@ function PitchPlayer({
 
       {/* Nombre y escudo, juntos y legibles */}
       <span
-        className="mt-[0.35em] flex w-full items-center justify-center gap-[0.25em] rounded bg-bg/85 px-[0.3em] py-[0.1em] backdrop-blur"
-        style={{ fontSize: "3.5cqw" }}
+        className="mt-[0.3em] flex w-full items-center justify-center gap-[0.25em] rounded bg-bg/85 px-[0.3em] py-[0.08em] backdrop-blur"
+        style={{ fontSize: "3.2cqw" }}
       >
         <ClubCrest
           club={card.clubName}
@@ -906,8 +906,8 @@ function PitchPlayer({
       {/* Liga en la que juega */}
       {card.leagueName && (
         <span
-          className="mt-[0.15em] w-full truncate rounded bg-bg/70 px-[0.3em] text-center leading-tight text-muted backdrop-blur"
-          style={{ fontSize: "2.9cqw" }}
+          className="mt-[0.1em] w-full truncate rounded bg-bg/70 px-[0.25em] text-center leading-tight text-muted backdrop-blur"
+          style={{ fontSize: "2.2cqw" }}
         >
           {shortLeague(card.leagueName)}
         </span>

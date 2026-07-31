@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Home, Users, Store, Play, UserRound, ClipboardCheck } from "lucide-react";
+import { Home, Users, Store, Play, UserRound, ClipboardCheck, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { navCounts } from "@/app/(game)/online/actions";
 
@@ -13,6 +13,7 @@ const items = [
   { href: "/play", label: "Jugar", icon: Play, invites: true },
   { href: "/market", label: "Mercado", icon: Store },
   { href: "/sbc", label: "SBC", icon: ClipboardCheck },
+  { href: "/chat", label: "Chat", icon: MessageCircle, chat: true },
   { href: "/online", label: "En línea", icon: UserRound, presence: true },
 ];
 
@@ -20,6 +21,7 @@ export function BottomNav() {
   const pathname = usePathname();
   const [online, setOnline] = useState<number | null>(null);
   const [invites, setInvites] = useState(0);
+  const [chat, setChat] = useState(0);
   const [bump, setBump] = useState(false);
 
   // El layout no se desmonta al navegar, así que este intervalo vive una
@@ -31,9 +33,10 @@ export function BottomNav() {
     const tick = async () => {
       if (document.visibilityState !== "visible") return;
       try {
-        const { online: n, invites: inv } = await navCounts();
+        const { online: n, invites: inv, chat: ch } = await navCounts();
         if (!alive) return;
         setInvites(inv);
+        setChat(ch);
         setOnline((prev) => {
           if (prev !== null && n !== prev) {
             setBump(true);
@@ -79,7 +82,7 @@ export function BottomNav() {
           />
         )}
 
-        {items.map(({ href, label, icon: Icon, presence, invites: showInvites }, i) => {
+        {items.map(({ href, label, icon: Icon, presence, invites: showInvites, chat: showChat }, i) => {
           const active = i === activeIndex;
           return (
             <Link
@@ -113,6 +116,20 @@ export function BottomNav() {
                     aria-label={`${online} en línea`}
                   >
                     {online}
+                  </span>
+                )}
+
+                {/* Mensajes del chat sin leer */}
+                {showChat && chat > 0 && pathname !== "/chat" && (
+                  <span
+                    className={cn(
+                      "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1",
+                      "bg-sky-400 text-[9px] font-extrabold tabular-nums text-bg",
+                      "ring-2 ring-surface"
+                    )}
+                    aria-label={`${chat} mensajes sin leer`}
+                  >
+                    {chat}
                   </span>
                 )}
 

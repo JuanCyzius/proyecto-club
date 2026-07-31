@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Notice } from "@/components/ui/layout";
-import { Swords, Zap, Coins, Shuffle, ChevronRight, Target, Gamepad2 } from "lucide-react";
+import { Swords, Zap, Coins, Shuffle, ChevronRight, Target, Gamepad2, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Card, CardBody } from "@/components/ui/card";
@@ -102,6 +102,23 @@ export function TierList({ tiers }: { tiers: Tier[] }) {
           <span className="block font-bold text-turf">Tanda de penales</span>
           <span className="block text-xs text-muted">
             Desafiá a otro club. Podés apostar monedas o un jugador.
+          </span>
+        </span>
+        <ChevronRight size={18} className="shrink-0 text-muted" />
+      </Link>
+
+      {/* Duelo de Cartas */}
+      <Link
+        href="/duel-cards"
+        className="flex items-center gap-3 rounded-2xl border border-sky-400/40 bg-sky-400/10 p-3 transition hover:border-sky-400"
+      >
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-400/20 text-sky-400">
+          <Layers size={22} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold text-sky-400">Duelo de Cartas</span>
+          <span className="block text-xs text-muted">
+            PvP en vivo: 10 rondas de estrategia con tus cartas. Apostá si querés.
           </span>
         </span>
         <ChevronRight size={18} className="shrink-0 text-muted" />
