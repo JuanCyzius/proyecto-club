@@ -95,6 +95,7 @@ export function PackStore({
 
   // Sobre de Posiciones: 3 cambios al azar
   const [posResult, setPosResult] = useState<PositionChange[] | null>(null);
+  const [showPosOdds, setShowPosOdds] = useState(false);
   function buyPositions() {
     setError(null);
     setBusyId("positions");
@@ -211,41 +212,6 @@ export function PackStore({
         })}
 
       {tab === "items" && (
-        <div className="mb-2 space-y-2 rounded-2xl border border-sky-400/40 bg-sky-400/10 p-3">
-          <p className="text-sm font-bold text-sky-400">Sobre de Posiciones</p>
-          <p className="text-xs text-muted">
-            3 cambios de posición al azar (CB→RB, RW→ST, etc.). Se aplican a
-            un jugador puntual desde tu Colección.
-          </p>
-          <Button
-            fullWidth
-            disabled={pending || balance < 3000}
-            onClick={buyPositions}
-          >
-            <Coins size={15} />
-            {busyId === "positions"
-              ? "Abriendo…"
-              : balance < 3000
-                ? "Necesitás 3.000"
-                : "Abrir por 3.000"}
-          </Button>
-          {posResult && (
-            <div className="space-y-1 rounded-lg border border-border bg-surface p-2">
-              <p className="text-[11px] font-bold text-turf">Te tocaron:</p>
-              {posResult.map((c, i) => (
-                <p key={i} className="text-xs">
-                  <b>{c.from_pos}</b> → <b className="text-sky-400">{c.to_pos}</b>
-                </p>
-              ))}
-              <p className="text-[10px] text-muted">
-                Aplicalos desde Colección, tocando un jugador.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {tab === "items" && (
         <p className="px-1 text-[11px] text-muted">
           Los ítems se usan desde tu colección. También salen dentro de los
           sobres.
@@ -280,6 +246,45 @@ export function PackStore({
       )}
 
       {/* Sobres */}
+      {/* Sobre de Posiciones: mismo formato que el resto */}
+      {tab === "packs" && (
+        <Card>
+          <CardBody className="space-y-3">
+            <div className="flex items-start gap-3">
+              <PackArt code="positions" />
+              <div className="flex-1">
+                <p className="font-display text-lg font-extrabold leading-tight">
+                  Sobre de Posiciones
+                </p>
+                <p className="mt-0.5 text-xs text-muted">
+                  3 cambios de posición al azar. Se aplican a un jugador desde
+                  tu Colección.
+                </p>
+                <button
+                  onClick={() => setShowPosOdds(true)}
+                  className="mt-1.5 inline-flex items-center gap-0.5 text-xs font-semibold text-turf"
+                >
+                  Ver qué puede salir <ChevronRight size={13} />
+                </button>
+              </div>
+            </div>
+            <Button
+              fullWidth
+              onClick={buyPositions}
+              disabled={pending || balance < 3000}
+              variant={balance >= 3000 ? "primary" : "secondary"}
+            >
+              <Coins size={16} />
+              {busyId === "positions"
+                ? "Abriendo…"
+                : balance >= 3000
+                  ? "Abrir por 3.000"
+                  : "Necesitás 3.000"}
+            </Button>
+          </CardBody>
+        </Card>
+      )}
+
       {tab === "packs" && packs.map((p) => {
         const price = p.price_coins ?? 0;
         const canAfford = balance >= price;
@@ -318,6 +323,73 @@ export function PackStore({
           </Card>
         );
       })}
+
+      {/* Qué te tocó en el Sobre de Posiciones */}
+      <Modal
+        open={posResult !== null}
+        onClose={() => {
+          setPosResult(null);
+          router.refresh();
+        }}
+        title="Sobre de Posiciones"
+      >
+        <div className="space-y-2">
+          <p className="text-center text-sm text-muted">Te tocaron:</p>
+          {(posResult ?? []).map((c, i) => (
+            <div
+              key={i}
+              className="animate-scale-in flex items-center justify-center gap-2 rounded-xl border border-sky-400/40 bg-sky-400/10 py-3"
+              style={{ animationDelay: `${i * 120}ms` }}
+            >
+              <span className="font-display text-xl font-extrabold">
+                {c.from_pos}
+              </span>
+              <ChevronRight size={18} className="text-sky-400" />
+              <span className="font-display text-xl font-extrabold text-sky-400">
+                {c.to_pos}
+              </span>
+            </div>
+          ))}
+          <p className="text-center text-[11px] text-muted">
+            Aplicalos desde Colección, tocando un jugador que tenga esa
+            posición.
+          </p>
+          <Button
+            fullWidth
+            onClick={() => {
+              setPosResult(null);
+              router.refresh();
+            }}
+          >
+            Listo
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Qué puede salir en el Sobre de Posiciones */}
+      <Modal
+        open={showPosOdds}
+        onClose={() => setShowPosOdds(false)}
+        title="Sobre de Posiciones"
+      >
+        <div className="space-y-2 text-sm">
+          <p className="text-muted">
+            Trae <b className="text-text">3 cambios al azar</b>. Cada cambio
+            convierte una posición en otra y se usa en un jugador que tenga la
+            posición de origen.
+          </p>
+          <div className="space-y-1 rounded-xl border border-border bg-surface-2 p-3 text-xs">
+            <p><b>Defensa:</b> CB↔RB · CB↔LB · RB↔RWB · LB↔LWB · CB→CDM · laterales a volante</p>
+            <p><b>Mediocampo:</b> CDM↔CM · CM↔CAM · CM↔RM/LM · RM↔RW · LM↔LW · CAM→CF</p>
+            <p><b>Ataque:</b> RW↔LW · RW/LW→ST · CF↔ST · CF→CAM</p>
+          </div>
+          <p className="text-[11px] text-muted">
+            El arquero no entra: sus estadísticas son de otra naturaleza. No
+            hay saltos extremos (un central no pasa a delantero de una), pero
+            se pueden encadenar varios cambios.
+          </p>
+        </div>
+      </Modal>
 
       {/* Probabilidades */}
       <Modal
@@ -372,6 +444,7 @@ const PACK_STYLE: Record<string, string> = {
   silver: "from-[#aab7c2] to-[#6f7d89]",
   gold: "from-[#ecc65e] to-[#a9812f]",
   special: "from-[#6f86ff] to-[#2b348f]",
+  positions: "from-[#38bdf8] to-[#0c5c86]",
 };
 
 function PackArt({ code }: { code: string }) {
