@@ -153,3 +153,32 @@ export async function buyItem(
   revalidatePath("/collection");
   return { ok: true };
 }
+
+export type PositionChange = {
+  code: string;
+  from_pos: string;
+  to_pos: string;
+  qty?: number;
+};
+
+/** Compra el Sobre de Posiciones: 3.000 monedas, 3 cambios al azar. */
+export async function buyPositionPack(): Promise<
+  { ok: true; changes: PositionChange[] } | { ok: false; error: string }
+> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("buy_position_pack");
+  if (error) {
+    const raw = error.message ?? "";
+    if (raw.toLowerCase().includes("insufficient"))
+      return { ok: false, error: "No te alcanzan las monedas." };
+    if (raw.toLowerCase().includes("could not find"))
+      return { ok: false, error: "Falta ejecutar la migración 0054_sobre_posiciones.sql." };
+    return { ok: false, error: raw.replace(/^.*?:\s*/, "") || "No se pudo comprar." };
+  }
+  revalidatePath("/packs");
+  revalidatePath("/collection");
+  return {
+    ok: true,
+    changes: ((data as { changes?: PositionChange[] })?.changes ?? []),
+  };
+}

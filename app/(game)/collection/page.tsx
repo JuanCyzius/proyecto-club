@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { OwnedCard } from "@/lib/players";
 import type { CollectionCard } from "./collection-list";
 import { CollectionList } from "./collection-list";
+import { myPositionChanges } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +14,14 @@ export default async function CollectionPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const posChanges = await myPositionChanges();
   const [{ data: credits }, { data: cardRows }, { data: slotRows }, { data: profile }] =
     await Promise.all([
       supabase.rpc("my_draft_credits"),
       supabase
         .from("player_cards")
         .select(
-          "id, bound, stamina, injury_type, injury_matches_left, template:player_templates(position, positions, overall, rarity, attributes, gk_attributes, identity:player_identities(name, club_name, league_name, nationality))"
+          "id, bound, stamina, injury_type, injury_matches_left, position_override, template:player_templates(position, positions, overall, rarity, attributes, gk_attributes, identity:player_identities(name, club_name, league_name, nationality))"
         )
         .eq("owner_id", user.id)
         .eq("status", "in_club"),
@@ -34,7 +36,8 @@ export default async function CollectionPage() {
   const cards = ((cardRows ?? []) as any[]).map((r) => ({
     id: r.id,
     name: r.template?.identity?.name ?? "—",
-    position: r.template?.position,
+    // La posición cambiada con un ítem manda sobre la del catálogo
+    position: r.position_override ?? r.template?.position,
     overall: r.template?.overall,
     rarity: r.template?.rarity,
     attributes: r.template?.attributes,
@@ -79,6 +82,7 @@ export default async function CollectionPage() {
         cards={cards}
         coins={profile?.coins ?? 0}
         inventory={inventory}
+        posChanges={posChanges}
         packCredits={
           ((credits ?? []) as { id: number; pack_name: string }[]).map((c) => ({
             id: c.id,

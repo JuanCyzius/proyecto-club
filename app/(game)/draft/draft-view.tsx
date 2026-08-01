@@ -138,9 +138,18 @@ export function DraftView({
         initialReward={live.reward ?? null}
         onExit={() => {
           // Al salir se registra el resultado en el draft y se refresca
-          finishDraftMatch(live.matchId).then(() => {
+          finishDraftMatch(live.matchId).then((r) => {
             setLive(null);
             setBusy(null);
+            if (r.ok) {
+              setLastMatch({
+                won: r.won,
+                home: 0,
+                away: 0,
+                finished: r.finished,
+                reward: r.reward,
+              });
+            }
             router.refresh();
           });
         }}

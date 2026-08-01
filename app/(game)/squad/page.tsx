@@ -28,7 +28,7 @@ export default async function SquadPage() {
       supabase
         .from("player_cards")
         .select(
-          "id, stamina, injury_type, injury_matches_left, suspension_matches, template:player_templates(position, positions, overall, rarity, attributes, gk_attributes, identity:player_identities(name, club_name, league_name, nationality))"
+          "id, stamina, injury_type, injury_matches_left, suspension_matches, position_override, template:player_templates(position, positions, overall, rarity, attributes, gk_attributes, identity:player_identities(name, club_name, league_name, nationality))"
         )
         .eq("owner_id", user.id),
       supabase
@@ -48,7 +48,8 @@ export default async function SquadPage() {
   const cards: OwnedCard[] = (cardRows ?? []).map((r: any) => ({
     id: r.id,
     name: r.template?.identity?.name ?? "—",
-    position: r.template?.position,
+    // La posición cambiada con un ítem manda sobre la del catálogo
+    position: r.position_override ?? r.template?.position,
     overall: r.template?.overall,
     rarity: r.template?.rarity,
     attributes: r.template?.attributes,

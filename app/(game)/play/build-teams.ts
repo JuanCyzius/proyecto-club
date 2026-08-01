@@ -91,7 +91,7 @@ export async function buildHomeTeam(
   const { data: cardRows } = await supabase
     .from("player_cards")
     .select(
-      "id, stamina, injury_matches_left, suspension_matches, template:player_templates(position, overall, attributes, gk_attributes, identity:player_identities(name, club_name, league_name, nationality))"
+      "id, stamina, injury_matches_left, suspension_matches, position_override, template:player_templates(position, overall, attributes, gk_attributes, identity:player_identities(name, club_name, league_name, nationality))"
     )
     .eq("owner_id", userId);
 
@@ -103,7 +103,8 @@ export async function buildHomeTeam(
     if ((r.suspension_matches ?? 0) > 0) suspended.add(r.id);
     cards.set(r.id, {
       id: r.id,
-      position: r.template?.position,
+      // La posición cambiada con un ítem manda sobre la del catálogo
+    position: r.position_override ?? r.template?.position,
       overall: r.template?.overall,
       attributes: r.template?.attributes,
       name: r.template?.identity?.name ?? "—",

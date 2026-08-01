@@ -124,7 +124,7 @@ export async function submitSbc(
   const { data: rows } = await supabase
     .from("player_cards")
     .select(
-      "id, status, template:player_templates(position, overall, rarity, identity:player_identities(name, club_name, league_name, nationality))"
+      "id, status, position_override, template:player_templates(position, overall, rarity, identity:player_identities(name, club_name, league_name, nationality))"
     )
     .eq("owner_id", user.id)
     .in("id", cardIds);
@@ -132,7 +132,8 @@ export async function submitSbc(
   const cards: SbcCard[] = ((rows ?? []) as any[]).map((r) => ({
     id: r.id,
     name: r.template?.identity?.name ?? "—",
-    position: r.template?.position,
+    // La posición cambiada con un ítem manda sobre la del catálogo
+    position: r.position_override ?? r.template?.position,
     overall: r.template?.overall ?? 0,
     rarity: r.template?.rarity ?? "common",
     club_name: r.template?.identity?.club_name ?? null,

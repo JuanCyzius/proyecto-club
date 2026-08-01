@@ -13,6 +13,9 @@ export default async function DraftPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Contabiliza partidos que hayan quedado sin registrar
+  await supabase.rpc("draft_reconcile");
+
   const [{ data: state }, { data: config }, { data: profile }, { data: credits }, { data: runsToday }] =
     await Promise.all([
       supabase.rpc("my_draft"),

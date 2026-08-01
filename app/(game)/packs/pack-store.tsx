@@ -11,7 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { RARITIES, RARITY_LABEL, type Rarity } from "@/lib/players";
 import { Tabs } from "@/components/ui/tabs";
-import { openPack, buyItem, openDraftCreditPack } from "./actions";
+import {
+  openPack,
+  buyItem,
+  openDraftCreditPack,
+  buyPositionPack,
+  type PositionChange,
+} from "./actions";
 import type { PulledCard } from "./types";
 import { PackOpening } from "./pack-opening";
 
@@ -84,6 +90,24 @@ export function PackStore({
       }
       setBalance((b) => b - (p.price_coins ?? 0));
       setPulled(res.cards);
+    });
+  }
+
+  // Sobre de Posiciones: 3 cambios al azar
+  const [posResult, setPosResult] = useState<PositionChange[] | null>(null);
+  function buyPositions() {
+    setError(null);
+    setBusyId("positions");
+    start(async () => {
+      const res = await buyPositionPack();
+      setBusyId(null);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setBalance((b) => b - 3000);
+      setPosResult(res.changes);
+      router.refresh();
     });
   }
 
@@ -185,6 +209,41 @@ export function PackStore({
             </Card>
           );
         })}
+
+      {tab === "items" && (
+        <div className="mb-2 space-y-2 rounded-2xl border border-sky-400/40 bg-sky-400/10 p-3">
+          <p className="text-sm font-bold text-sky-400">Sobre de Posiciones</p>
+          <p className="text-xs text-muted">
+            3 cambios de posición al azar (CB→RB, RW→ST, etc.). Se aplican a
+            un jugador puntual desde tu Colección.
+          </p>
+          <Button
+            fullWidth
+            disabled={pending || balance < 3000}
+            onClick={buyPositions}
+          >
+            <Coins size={15} />
+            {busyId === "positions"
+              ? "Abriendo…"
+              : balance < 3000
+                ? "Necesitás 3.000"
+                : "Abrir por 3.000"}
+          </Button>
+          {posResult && (
+            <div className="space-y-1 rounded-lg border border-border bg-surface p-2">
+              <p className="text-[11px] font-bold text-turf">Te tocaron:</p>
+              {posResult.map((c, i) => (
+                <p key={i} className="text-xs">
+                  <b>{c.from_pos}</b> → <b className="text-sky-400">{c.to_pos}</b>
+                </p>
+              ))}
+              <p className="text-[10px] text-muted">
+                Aplicalos desde Colección, tocando un jugador.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {tab === "items" && (
         <p className="px-1 text-[11px] text-muted">

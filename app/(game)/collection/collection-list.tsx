@@ -14,7 +14,13 @@ import { Tabs } from "@/components/ui/tabs";
 import { PlayerCard } from "@/components/player-card/player-card";
 import { ClubCrest, clubLogo } from "@/components/club/club-crest";
 import { RARITY_LABEL, type OwnedCard, type Rarity } from "@/lib/players";
-import { quickSell, applyItemToSquad, quickSellMany } from "./actions";
+import {
+  quickSell,
+  applyItemToSquad,
+  quickSellMany,
+  applyPositionChange,
+  type MyPositionChange,
+} from "./actions";
 import { listCard, quickList } from "../market/actions";
 
 export type CollectionCard = OwnedCard & {
@@ -42,11 +48,13 @@ export function CollectionList({
   coins,
   inventory,
   packCredits,
+  posChanges,
 }: {
   cards: CollectionCard[];
   coins: number;
   inventory: InventoryItem[];
   packCredits: { id: number; name: string }[];
+  posChanges: MyPositionChange[];
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<"players" | "items">("players");
@@ -141,6 +149,19 @@ export function CollectionList({
         setSelected(null);
         router.refresh();
       } else setError(res.error ?? "No se pudo publicar.");
+    });
+  }
+
+  function applyPosChange(code: string, cardId: string) {
+    setError(null);
+    setMsg(null);
+    start(async () => {
+      const res = await applyPositionChange(code, cardId);
+      if (res.ok) {
+        setMsg("Posición cambiada.");
+        setSelected(null);
+        router.refresh();
+      } else setError(res.error ?? "No se pudo aplicar.");
     });
   }
 
@@ -437,6 +458,32 @@ export function CollectionList({
               {selected.position} · {RARITY_LABEL[selected.rarity]}
               {selected.clubName ? ` · ${selected.clubName}` : ""}
             </p>
+
+            {/* Cambios de posición aplicables a ESTE jugador */}
+            {(() => {
+              const usable = posChanges.filter(
+                (c) => c.from_pos === selected.position
+              );
+              if (usable.length === 0) return null;
+              return (
+                <div className="space-y-1.5 rounded-xl border border-sky-400/40 bg-sky-400/10 p-2.5">
+                  <p className="text-xs font-bold text-sky-400">Cambiar posición</p>
+                  {usable.map((c) => (
+                    <button
+                      key={c.code}
+                      disabled={pending}
+                      onClick={() => applyPosChange(c.code, selected.id)}
+                      className="flex w-full items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm disabled:opacity-40"
+                    >
+                      <span className="flex-1 text-left">
+                        <b>{c.from_pos}</b> → <b className="text-sky-400">{c.to_pos}</b>
+                      </span>
+                      <span className="font-bold">×{c.qty}</span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
 
             {/* Los ítems de curación/energía ahora se usan desde la
                 pestaña Ítems y afectan a todo el plantel de una vez. */}

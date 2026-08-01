@@ -66,3 +66,39 @@ export async function quickSellMany(
   const r = data as { sold: number; coins: number };
   return { ok: true, sold: r.sold, coins: r.coins };
 }
+
+export type MyPositionChange = {
+  code: string;
+  from_pos: string;
+  to_pos: string;
+  qty: number;
+};
+
+/** Cambios de posición disponibles del usuario. */
+export async function myPositionChanges(): Promise<MyPositionChange[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("my_position_changes");
+  if (error) return [];
+  return (data ?? []) as MyPositionChange[];
+}
+
+/** Aplica un cambio de posición a un jugador puntual. */
+export async function applyPositionChange(
+  code: string,
+  cardId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("apply_position_change", {
+    p_code: code,
+    p_card_id: cardId,
+  });
+  if (error) {
+    const raw = error.message ?? "";
+    if (raw.toLowerCase().includes("could not find"))
+      return { ok: false, error: "Falta ejecutar la migración 0054_sobre_posiciones.sql." };
+    return { ok: false, error: raw.replace(/^.*?:\s*/, "") || "No se pudo aplicar." };
+  }
+  revalidatePath("/collection");
+  revalidatePath("/squad");
+  return { ok: true };
+}
