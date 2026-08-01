@@ -27,6 +27,7 @@ export type DraftState = {
   position: Position | null;
   picks: DraftPick[];
   candidates: DraftCandidate[] | null;
+  lineup: { idx: number; slot: string; slot_pos: string }[] | null;
   wins: number;
   losses: number;
 };

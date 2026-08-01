@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { simulateMatch } from "@/lib/sim";
-import { playerChemistry } from "@/lib/chemistry";
+import { createLiveMatch, advance, publicView } from "@/lib/sim/live";
+import { DEFAULT_TACTICS } from "@/lib/formations";
+import { playerChemistry, teamChemistry, type ChemPlayer } from "@/lib/chemistry";
 import { buildAiTeam } from "../play/build-teams";
 import type { SimPlayer, SimTeam } from "@/lib/sim/types";
 import type { Attributes, GkAttributes } from "@/lib/players";
 import type { DraftPick, DraftState } from "./types";
+import type { LiveResult } from "../play/live-actions";
 
 function friendly(raw: string): string {
   const m = raw.toLowerCase();
@@ -20,10 +22,10 @@ function friendly(raw: string): string {
 }
 
 /**
- * El once del draft se arma con jugadores de clubes/países distintos,
- * así que casi nunca va a tener la química de un plantel armado a
- * propósito. Esto la castiga de verdad: entre 0.82x (química nula) y
- * 1.0x (química perfecta) sobre cada atributo.
+ * La química define el 30% del rendimiento, igual que en el resto del
+ * juego: química 100 rinde al 100%, química 0 rinde al 70%. En el
+ * draft pesa especialmente, porque el equipo se arma con jugadores de
+ * clubes y países distintos.
  */
 function chemistryFactor(picks: DraftPick[]): number {
   if (picks.length === 0) return 1;
@@ -34,10 +36,8 @@ function chemistryFactor(picks: DraftPick[]): number {
     league: p.league_name,
     nation: p.nationality,
   }));
-  const avg =
-    squad.reduce((sum, p) => sum + playerChemistry(p, squad).total, 0) /
-    squad.length; // 0-10
-  return 0.82 + 0.018 * avg; // 10/10 => 1.00, 0/10 => 0.82
+  const chem = teamChemistry(squad); // 0-100
+  return 0.7 + 0.3 * (chem / 100);
 }
 
 function scaleAttrs(a: Attributes, f: number): Attributes {
@@ -104,19 +104,12 @@ export async function abandonDraft(runId: string): Promise<DraftResult> {
  * Juega un partido del draft con el once elegido.
  * La simulación y el registro del resultado ocurren en el servidor.
  */
-export async function playDraftMatch(runId: string): Promise<
-  | {
-      ok: true;
-      matchId: string;
-      won: boolean;
-      homeScore: number;
-      awayScore: number;
-      wins: number;
-      finished: boolean;
-      reward?: { coins: number; packs: string[] };
-    }
-  | { ok: false; error: string }
-> {
+/**
+ * Arranca el partido del draft con el MISMO motor en vivo que el
+ * partido rápido: relato minuto a minuto, decisiones, penales y
+ * cambios. El resultado se registra al terminar (ver finishDraftMatch).
+ */
+export async function playDraftMatch(runId: string): Promise<LiveResult> {
   const supabase = createClient();
   const {
     data: { user },
@@ -131,53 +124,78 @@ export async function playDraftMatch(runId: string): Promise<
   if (run.status !== "playing")
     return { ok: false, error: "Todavía estás armando el equipo." };
 
-  // Once del draft, con los atributos ajustados por la química real
-  // del plantel armado (clubes/países distintos = menos química).
-  const chemFactor = chemistryFactor(run.picks ?? []);
-  const starters: SimPlayer[] = (run.picks ?? []).map((p: DraftPick) => ({
+  const picks = run.picks ?? [];
+  const starters11 = picks.filter((p) => !p.slot.startsWith("SUB"));
+  const benchPicks = picks.filter((p) => p.slot.startsWith("SUB"));
+  if (starters11.length < 11)
+    return { ok: false, error: "El once del draft está incompleto." };
+
+  // La química del once armado pesa igual que en el resto del juego
+  const chemFactorTeam = chemistryFactor(starters11);
+  const toSim = (p: DraftPick, f: number): SimPlayer => ({
     name: p.name,
     position: p.position,
     slotPos: p.slot_pos,
-    attributes: scaleAttrs(p.attributes, chemFactor),
-    overall: Math.round(p.overall * chemFactor),
-    gkAttributes: scaleGk(p.gk_attributes, chemFactor),
-  }));
-  if (starters.length < 11)
-    return { ok: false, error: "El once del draft está incompleto." };
+    attributes: scaleAttrs(p.attributes, f),
+    overall: p.overall,
+    gkAttributes: scaleGk(p.gk_attributes, f),
+    startStamina: 100,
+  });
+
+  const starters = starters11.map((p) => toSim(p, chemFactorTeam));
+  const bench = benchPicks.map((p) => toSim(p, chemFactorTeam));
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("club_name")
+    .select("club_name, crest_club")
     .eq("id", user.id)
     .maybeSingle();
 
   const home: SimTeam = {
     name: `${profile?.club_name ?? "Tu club"} (Draft)`,
     starters,
-    bench: [],
-    tactics: {
-      mentality: "balanced",
-      press: "medium",
-      tempo: "medium",
-      width: "medium",
-      passing: "mixed",
-    },
+    bench,
+    tactics: { ...DEFAULT_TACTICS },
+    chemistry: Math.round(
+      teamChemistry(
+        starters11.map((p) => ({
+          cardPos: p.position,
+          slotPos: p.slot_pos ?? p.position,
+          club: p.club_name ?? null,
+          league: p.league_name ?? null,
+          nation: p.nationality ?? null,
+        }))
+      )
+    ),
+    avgOverall: Math.round(
+      starters11.reduce((sum, p) => sum + p.overall, 0) / starters11.length
+    ),
+    crestClub: profile?.crest_club ?? null,
   };
 
-  // Escalera de rivales: exige un equipo cada vez mejor armado (nivel
-  // + química) para sostener la racha. Llegar a 3 victorias ya cuesta,
-  // y las 5 solo están al alcance de un muy buen plantel.
+  // Escalera de rivales: cada victoria exige un equipo mejor
   const tier = ["t80", "t85", "t85", "t90", "t95"][run.wins] ?? "t90";
-  const { data: drawn } = await supabase.rpc("random_opponent", {
-    p_tier: tier,
-  });
-  const ai = (drawn as any[])?.[0];
-  if (!ai) return { ok: false, error: "No se pudo sortear un rival." };
+  const { data: ai } = await supabase.rpc("random_opponent", { p_tier: tier });
+  const opponent = Array.isArray(ai) ? ai[0] : ai;
+  if (!opponent) return { ok: false, error: "No se encontró rival." };
 
-  const away = await buildAiTeam(supabase, ai);
+  const away = await buildAiTeam(supabase, opponent);
+  // La química del rival va de 80 a 100 y sube con la dificultad:
+  // en la primera ronda ronda 80-92, en la última 88-100.
+  const chemBase = 80 + run.wins * 2;
+  away.chemistry = Math.min(
+    100,
+    chemBase + Math.floor(Math.random() * (100 - chemBase + 1))
+  );
+  const awayFactor = 0.7 + 0.3 * (away.chemistry / 100);
+  away.starters = away.starters.map((p) => ({
+    ...p,
+    attributes: scaleAttrs(p.attributes, awayFactor),
+    gkAttributes: scaleGk(p.gkAttributes, awayFactor),
+  }));
+
   const seed = `draft-${runId}-${run.wins}-${Date.now()}`;
-
-  const result = simulateMatch({
+  const liveState = createLiveMatch({
     home,
     away,
     seed,
@@ -185,59 +203,124 @@ export async function playDraftMatch(runId: string): Promise<
   });
 
   const admin = createAdminClient();
-  const { data: inserted } = await admin
+  const { data: inserted, error } = await admin
     .from("matches")
     .insert({
       home_user: user.id,
-      ai_opponent: ai.id,
+      ai_opponent: opponent.id,
       kind: "ai",
       competition: "cup",
       seed,
-      status: "done",
+      status: "live",
+      is_live: true,
       home_name: home.name,
       away_name: away.name,
-      home_score: result.homeScore,
-      away_score: result.awayScore,
-      winner: result.winner,
-      played_at: new Date().toISOString(),
+      live_state: liveState as unknown as object,
       log: {
-        events: result.events,
-        stats: result.stats,
-        ratings: result.ratings,
-        wentToPenalties: result.wentToPenalties,
-        penalties: result.penalties ?? null,
+        draft_run: runId,
+        teams: {
+          home: {
+            name: home.name,
+            avgOverall: home.avgOverall ?? null,
+            chemistry: home.chemistry ?? null,
+            starters: home.starters.map((p) => ({
+              name: p.name,
+              position: p.position,
+              slotPos: p.slotPos,
+              overall: p.overall,
+            })),
+          },
+          away: {
+            name: away.name,
+            avgOverall: away.avgOverall ?? null,
+            chemistry: away.chemistry ?? null,
+            starters: away.starters.map((p) => ({
+              name: p.name,
+              position: p.position,
+              slotPos: p.slotPos,
+              overall: p.overall,
+            })),
+          },
+        },
       },
     })
     .select("id")
     .single();
 
-  const won = result.winner === "home";
-  const { data: rec, error: recErr } = await supabase.rpc("draft_record", {
-    p_run_id: runId,
-    p_won: won,
-  });
-  if (recErr) return { ok: false, error: friendly(recErr.message ?? "") };
+  if (error || !inserted)
+    return { ok: false, error: "No se pudo crear el partido." };
 
-  const r = rec as {
+  const res = advance(liveState);
+  res.state.pendingSince = res.decision ? Date.now() : null;
+  await admin
+    .from("matches")
+    .update({ live_state: res.state as unknown as object })
+    .eq("id", inserted.id);
+
+  revalidatePath("/draft");
+  return {
+    ok: true,
+    matchId: inserted.id,
+    events: res.newEvents,
+    view: publicView(res.state),
+    decision: res.decision,
+    finished: res.finished,
+    reward: null,
+  };
+}
+
+/**
+ * Registra el resultado del partido del draft una vez terminado.
+ * Se llama desde la pantalla cuando el partido llega al final.
+ */
+export async function finishDraftMatch(
+  matchId: string
+): Promise<
+  | {
+      ok: true;
+      won: boolean;
+      wins: number;
+      finished: boolean;
+      reward?: { coins: number; packs: string[] };
+    }
+  | { ok: false; error: string }
+> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("draft_result", {
+    p_match_id: matchId,
+  });
+  if (error) return { ok: false, error: friendly(error.message ?? "") };
+  const r = data as {
+    won: boolean;
     wins: number;
     finished: boolean;
     coins?: number;
     packs?: string[];
   };
-
   revalidatePath("/draft");
-  revalidatePath("/club");
-
+  revalidatePath("/packs");
   return {
     ok: true,
-    matchId: inserted?.id ?? "",
-    won,
-    homeScore: result.homeScore,
-    awayScore: result.awayScore,
+    won: r.won,
     wins: r.wins,
     finished: r.finished,
-    reward: r.finished
-      ? { coins: r.coins ?? 0, packs: r.packs ?? [] }
-      : undefined,
+    reward: r.finished ? { coins: r.coins ?? 0, packs: r.packs ?? [] } : undefined,
   };
+}
+
+/** Guarda formación y alineación antes de jugar. */
+export async function setDraftLineup(
+  runId: string,
+  formation: string,
+  lineup: { idx: number; slot: string; slot_pos: string }[]
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("draft_set_lineup", {
+    p_run_id: runId,
+    p_formation: formation,
+    p_lineup: lineup,
+  });
+  if (error) return { ok: false, error: friendly(error.message ?? "") };
+  revalidatePath("/draft");
+  return { ok: true };
 }

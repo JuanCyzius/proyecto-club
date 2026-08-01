@@ -13,6 +13,7 @@ import {
   Check,
   X,
   Package,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardBody } from "@/components/ui/card";
@@ -21,10 +22,14 @@ import { ClubCrest } from "@/components/club/club-crest";
 import { RARITY_LABEL, type Rarity } from "@/lib/players";
 import {
   abandonDraft,
+  finishDraftMatch,
   pickPlayer,
   playDraftMatch,
   startDraft,
 } from "./actions";
+import { DraftLineup } from "./draft-lineup";
+import { LiveMatch } from "../play/live-match";
+import type { LiveResult } from "../play/live-actions";
 import type { DraftCandidate, DraftState, PackCredit } from "./types";
 
 const RARITY_DOT: Record<Rarity, string> = {
@@ -71,6 +76,9 @@ export function DraftView({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [live, setLive] = useState<LiveResult | null>(null);
+  // Al terminar el sorteo se abre el armado del equipo
+  const [showLineup, setShowLineup] = useState(false);
   const [lastMatch, setLastMatch] = useState<{
     won: boolean;
     home: number;
@@ -114,15 +122,30 @@ export function DraftView({
         setError(res.error);
         return;
       }
-      setLastMatch({
-        won: res.won,
-        home: res.homeScore,
-        away: res.awayScore,
-        finished: res.finished,
-        reward: res.reward,
-      });
-      router.refresh();
+      setLive(res);
     });
+  }
+
+  // ── PARTIDO EN VIVO DEL DRAFT ──
+  if (live && live.ok) {
+    return (
+      <LiveMatch
+        matchId={live.matchId}
+        initialEvents={live.events}
+        initialView={live.view}
+        initialDecision={live.decision}
+        initialFinished={live.finished}
+        initialReward={live.reward ?? null}
+        onExit={() => {
+          // Al salir se registra el resultado en el draft y se refresca
+          finishDraftMatch(live.matchId).then(() => {
+            setLive(null);
+            setBusy(null);
+            router.refresh();
+          });
+        }}
+      />
+    );
   }
 
   // ── SIN DRAFT ACTIVO ──
@@ -235,6 +258,24 @@ export function DraftView({
           </p>
         </div>
       </div>
+    );
+  }
+
+  // ── ARMANDO EL EQUIPO (antes de cada partido) ──
+  if (state.status === "playing" && showLineup) {
+    const asMap: Record<string, number> = {};
+    for (const l of state.lineup ?? []) asMap[l.slot] = l.idx;
+    return (
+      <DraftLineup
+        runId={state.run_id}
+        picks={state.picks}
+        initialFormation={state.formation}
+        initialLineup={state.lineup ? asMap : null}
+        onReady={() => {
+          setShowLineup(false);
+          router.refresh();
+        }}
+      />
     );
   }
 
@@ -397,17 +438,27 @@ export function DraftView({
           Volver al draft
         </Button>
       ) : (
-        <Button
-          fullWidth
-          size="lg"
-          disabled={pending}
-          onClick={playMatch}
-        >
-          <Swords size={17} />
-          {busy === "match"
-            ? "Jugando…"
-            : `Jugar partido ${state.wins + 1}`}
-        </Button>
+        <div className="space-y-2">
+          <Button
+            fullWidth
+            size="lg"
+            disabled={pending}
+            onClick={playMatch}
+          >
+            <Swords size={17} />
+            {busy === "match"
+              ? "Jugando…"
+              : `Jugar partido ${state.wins + 1}`}
+          </Button>
+          <Button
+            fullWidth
+            variant="secondary"
+            disabled={pending}
+            onClick={() => setShowLineup(true)}
+          >
+            <Users size={16} /> Acomodar el equipo
+          </Button>
+        </div>
       )}
 
       <div>
